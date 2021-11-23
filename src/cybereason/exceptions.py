@@ -17,6 +17,22 @@ class UnauthorizedRequest(CybereasonException):
         self.status_code = 403
 
 
+class ServerError(CybereasonException):
+    pass
+
+
+class ClientError(CybereasonException):
+    pass
+
+
+class ResourceNotFoundError(CybereasonException):
+    pass
+
+
+class ResourceExistsError(CybereasonException):
+    pass
+
+
 class FilterSyntaxError(CybereasonException, SyntaxError):
     pass
 

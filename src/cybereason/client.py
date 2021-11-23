@@ -4,7 +4,11 @@ from functools import cached_property
 from ipaddress import ip_address
 from httpx import AsyncClient, HTTPStatusError
 
-from .exceptions import UnauthorizedRequest, authz
+from .exceptions import (
+    UnauthorizedRequest, ServerError, ClientError,
+    ResourceNotFoundError, ResourceExistsError,
+    authz,
+)
 from .utils import parse_csv, to_list
 
 
@@ -15,11 +19,13 @@ class Cybereason:
         username:     str,
         password:     str,
         proxy:        Optional[str]=None,
+        timeout:      float=10.0,
     ):
         self.organization = organization
         self.username = username
         self.password = password
         self.proxy = proxy
+        self.timeout = timeout
 
     @cached_property
     def session(self) -> AsyncClient:
@@ -27,6 +33,7 @@ class Cybereason:
             base_url=f'https://{self.organization}.cybereason.net',
             headers={'content-type': 'application/json'},
             proxies=self.proxy,
+            timeout=self.timeout,
         )
 
     async def login(self) -> None:
@@ -51,6 +58,10 @@ class Cybereason:
         except HTTPStatusError as e:
             if e.response.status_code == 403:
                 raise UnauthorizedRequest(e.request.url) from None
+            elif e.response.status_code == 400:
+                raise ClientError
+            elif e.response.status_code == 500:
+                raise ServerError
             raise
 
         try:
@@ -121,7 +132,7 @@ class Cybereason:
 # endregion
 
 # region REPUTATIONS
-    async def get_reputations(self):
+    async def get_reputations(self) -> AsyncIterator[Dict[str, Any]]:
         '''Returns a list of custom reputations for files, IP addresses,
         and domain names.
         '''
@@ -187,12 +198,58 @@ class Cybereason:
         '''
         return await self.get('groups')
 
+    async def get_group_by_name(self, name: str) -> Dict[str, Any]:
+        resp = await self.get_groups()
+        try:
+            group = [g for g in resp if g['name'] == name][0]
+        except IndexError:
+            raise ResourceNotFoundError(f'There is not a group with name: "{name}".')
+        return group
+
+    async def get_group_by_id(self, group_id: str) -> Dict[str, Any]:
+        resp = await self.get_groups()
+        try:
+            group = [g for g in resp if g['id'] == group_id][0]
+        except IndexError:
+            raise ResourceNotFoundError(f'There is not a group with ID: "{group_id}"')
+        return group
+
     @authz('System Admin')
-    async def create_group(self, data):
+    async def create_group(
+        self,
+        *, name:     str,
+        description: Optional[str]=None,
+        rules:       Optional[List[Dict[str, Any]]]=None,
+        policy_id:   Optional[str]=None,
+    ) -> str:
         '''Creates a sensor group to help organize sensors in your
-        environment.
+        environment. Returns the group's ID.
+
+        Args:
+            name: A string with a name for the group.
+            description: A string that describes the group.
+            rules: The automatic assignment rules for groups that will
+                be applied on new sensors.
+            policy_id: The Id of a specific sensor policy that will be
+                applied to all sensors in the group 
         '''
-        return await self.post('groups', data)
+        data = {
+            'name': name,
+            'description': description or '',
+            'groupAssignRule': rules,
+            'policyId': policy_id,
+        }
+
+        try:
+            resp = await self.post('groups', data)
+        except ServerError as e:
+            try:
+                await self.get_group_by_name(name)
+            except ResourceNotFoundError:
+                raise e
+            raise ResourceExistsError(f'The group "{name}" already exists.')
+
+        return resp['groupId']
 
     @authz('System Admin')
     async def edit_group(self, group_id, data):
@@ -207,7 +264,11 @@ class Cybereason:
         return await self.post(f'groups/{group_id}', data)
 
     @authz('System Admin')
-    async def delete_group(self, group_id: str, new_group_id: Optional[str]=None):
+    async def delete_group(
+        self,
+        group_id:     str,
+        new_group_id: Optional[str]=None,
+    ) -> Dict[str, Any]:
         '''Deletes an existing sensor group.
 
         .. versionadded:: 20.2.201
@@ -223,7 +284,14 @@ class Cybereason:
                 role assigned.
         '''
         query = {'assignToGroupId': new_group_id or '00000000-0000-0000-0000-000000000000'}
-        return await self.delete(f'groups/{group_id}', query)
+        try:
+            return await self.delete(f'groups/{group_id}', query)
+        except ClientError as e:
+            try:
+                await self.get_group_by_id(group_id)
+            except ResourceNotFoundError:
+                raise
+            raise e
 
     @authz('Sensor Admin L1 or System Admin')
     async def add_to_group(self, group_id, sensors_ids):
