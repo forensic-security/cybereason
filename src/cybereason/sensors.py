@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, AsyncIterator
 
 from .utils import to_list
 from .exceptions import (
@@ -22,10 +22,6 @@ class SensorsMixin:
     @authz('System Admin')
     async def get_sensors_actions(self):
         '''Returns a list of all the current or queued actions on sensors.
-
-        Raises:
-            UnauthorizedRequest: if the user does not have the System Admin
-                role assigned.
         '''
         return await self.get('sensors/allActions')
 
@@ -45,10 +41,6 @@ class SensorsMixin:
         '''Retrieves a list of sensor groups.
 
         .. versioadded:: 20.1.x
-
-        Raises:
-            UnauthorizedRequest: if the user does not have the System Admin
-                role assigned.
         '''
         return await self.get('groups')
 
@@ -84,8 +76,8 @@ class SensorsMixin:
             description: A string that describes the group.
             rules: The automatic assignment rules for groups that will
                 be applied on new sensors.
-            policy_id: The Id of a specific sensor policy that will be
-                applied to all sensors in the group 
+            policy_id: The ID of a specific sensor policy that will be
+                applied to all sensors in the group.
         '''
         data = {
             'name': name,
@@ -110,10 +102,6 @@ class SensorsMixin:
         '''Edits the details of an existing sensor group.
 
         .. versioadded:: 20.2.2
-
-        Raises:
-            UnauthorizedRequest: if the user does not have the System Admin
-                role assigned.
         '''
         return await self.post(f'groups/{group_id}', data)
 
@@ -132,10 +120,6 @@ class SensorsMixin:
             new_group_id: You can add the group ID for the new group to which
                 to assign the sensors. If no group is specified, the sensors
                 will be assigned to the default unassigned group.
-
-        Raises:
-            UnauthorizedRequest: if the user does not have the System Admin
-                role assigned.
         '''
         query = {'assignToGroupId': new_group_id or '00000000-0000-0000-0000-000000000000'}
         try:
@@ -160,7 +144,7 @@ class SensorsMixin:
         }
         return await self.post('sensors/action/addToGroup', data)
 
-    # TODO: # you must be assigned to a group to run this request.
+    # TODO: you must be assigned to a group to run this request.
     @authz('Sensor Admin L1')
     async def remove_from_group(self, *sensors_ids, filters: Optional[Any]=None):
         '''Removes a sensor from a sensor group, and assigns it to the
@@ -170,3 +154,22 @@ class SensorsMixin:
         '''
         data = {'sensorsIds': sensors_ids, 'filters': filters}
         return await self.post('sensors/action/removeFromGroup', data)
+
+    # TODO: paginate
+    async def get_policies(
+        self,
+        show_config: bool=True,
+        filters:     Optional[Dict[str, Any]]=None,
+    ) -> AsyncIterator[Dict[str, Any]]:
+        query = {'filter': filters or dict()}
+        resp = await self.get('policies', query=query)
+
+        if show_config:
+            for policy in resp['policies']:
+                yield await self.get_policy(policy['id'])
+        else:
+            for policy in resp['policies']:
+                yield policy
+
+    async def get_policy(self, policy_id: str) -> Dict[str, Any]:
+        return await self.get(f'policies/{policy_id}')

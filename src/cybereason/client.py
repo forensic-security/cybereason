@@ -5,7 +5,7 @@ from ipaddress import ip_address
 from httpx import AsyncClient, HTTPStatusError
 
 from .exceptions import (
-    UnauthorizedRequest, ServerError, ClientError,
+    AuthenticationError, UnauthorizedRequest, ServerError, ClientError,
     authz,
 )
 from .utils import parse_csv
@@ -39,7 +39,10 @@ class Cybereason(SensorsMixin):
     async def login(self) -> None:
         auth = {'username': self.username, 'password': self.password}
         headers = {'content-type': 'application/x-www-form-urlencoded'}
-        await self.session.post('login.html', data=auth, headers=headers)
+        resp = await self.session.post('login.html', data=auth, headers=headers)
+        if 'error' in str(resp.next_request):
+            await self.session.aclose()
+            raise AuthenticationError
         self.session.base_url = f'{self.session.base_url}/rest'
 
     async def __aenter__(self) -> 'Cybereason':
@@ -62,6 +65,8 @@ class Cybereason(SensorsMixin):
                 raise ClientError
             elif e.response.status_code == 500:
                 raise ServerError
+            elif e.response.status_code == 302:
+                raise AuthenticationError from None
             raise
 
         try:
@@ -158,8 +163,8 @@ class Cybereason(SensorsMixin):
 
 # region THREAT INTELLIGENCE
     async def get_ip_threats(self, ip):
-        '''Returns details on IP address reputations based on the Cybereason
-        threat intelligence service.
+        '''Returns details on IP address reputations based on the
+        Cybereason threat intelligence service.
         '''
         # TODO: multiple ips?
         ip = ip_address(ip)
@@ -202,16 +207,12 @@ class Cybereason(SensorsMixin):
         environment.
 
         .. versionadded:: 21.1.81
-
-        Raises:
-            UnauthorizedRequest: if the user does not have the Responder L2
-                role assigned.
         '''
         return await self.get('irtools/packages')
 
     async def get_credentials(self):
-        '''Retrieves credentials for a predefined GCP bucket of your environment
-        that you can use to access the tool results output.
+        '''Retrieves credentials for a predefined GCP bucket of your
+        environment that you can use to access the tool results output.
         '''
         # TODO
         resp = await self.get('irtools/credentials')
