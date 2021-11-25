@@ -4,6 +4,7 @@ from io import BytesIO, BufferedIOBase
 from functools import cached_property
 from ipaddress import ip_address
 from pathlib import Path
+import re
 
 from httpx import AsyncClient, HTTPStatusError
 
@@ -11,18 +12,22 @@ from .exceptions import (
     AuthenticationError, UnauthorizedRequest, ServerError, ClientError,
     authz, min_version,
 )
-from .utils import parse_csv
+from .utils import parse_csv, find_next_version
 from .sensors import SensorsMixin
+from .system import SystemMixin
+
+DEFAULT_TIMEOUT = 10.0
+DEFAULT_PAGE_SIZE = 10
 
 
-class Cybereason(SensorsMixin):
+class Cybereason(SystemMixin, SensorsMixin):
     def __init__(
         self,
         organization: str,
         username:     str,
         password:     str,
         proxy:        Optional[str]=None,
-        timeout:      float=10.0,
+        timeout:      float=DEFAULT_TIMEOUT,
     ):
         self.organization = organization
         self.username = username
@@ -89,26 +94,45 @@ class Cybereason(SensorsMixin):
     async def delete(self, path: str, query: Optional[Dict[str, Any]]=None):
         return await self._request('DELETE', path, query=query)
 
-    async def raw_download(self, path: str) -> BufferedIOBase:
-        # TODO: return filename
+    async def raw_download(
+        self,
+        path:  str,
+        query: Optional[Dict[str,Any]]=None,
+    ) -> Tuple[str, BufferedIOBase]:
+
         buffer = BytesIO()
-        async with self.session.stream('GET', path) as resp:
+        async with self.session.stream('GET', path, params=query) as resp:
+            resp.raise_for_status()
+
+            filename = resp.headers['content-disposition']
+            filename = re.search(r'\"(.*)\"', filename).group(1)
+
             async for chunk in resp.aiter_bytes():
                 # filter out keep-alive chunks
                 if chunk:
                     buffer.write(chunk)
-            resp.raise_for_status()
+
         buffer.seek(0)
-        return buffer
+        return filename, buffer
 
     async def download(
         self,
-        urlpath:     str,
-        filepath:    Path,
-        *, extract:  bool=False,
-    ):
-        buffer = await self.raw_download(urlpath)
-        # TODO
+        path:     str,
+        folder:   Path,
+        *, query: Optional[Dict[str, Any]]=None,
+        extract:  bool=False,
+    ) -> Path:
+        filename, buffer = await self.raw_download(path, query=query)
+
+        if extract:
+            folder = find_next_version(folder)
+            # TODO
+            return folder
+        else:
+            filepath = find_next_version(Path(folder, filename))
+            with open(filepath, 'wb') as f:
+                f.write(buffer.read())
+            return filepath
 
     # FIXME
     async def aiter_pages(
@@ -116,7 +140,7 @@ class Cybereason(SensorsMixin):
         path:      str,
         data:      Any,
         key:       str,
-        page_size: int=10,
+        page_size: int=DEFAULT_PAGE_SIZE,
         sort:      str='ASC',
     ) -> AsyncIterator[Dict[str, Any]]:
         data = {**data, 'limit': page_size, 'offset': 0, 'sortDirection': sort}
@@ -127,29 +151,6 @@ class Cybereason(SensorsMixin):
             if not resp['hasMoreResults']:
                 break
             data['offset'] += page_size
-
-# region SYSTEM
-    @cached_property
-    async def version(self) -> Tuple[int, int, int]:
-        resp = await self.get('monitor/global/server/version/all')
-        return tuple(int(x) for x in resp['data']['version'].split('.'))
-
-    async def get_users(self) -> List[Dict[str, Any]]:
-        return await self.get('users')
-
-    async def get_user(self, username: Optional[str]=None) -> List[Dict[str, Any]]:
-        '''
-        Args:
-            username: If not specified, returns the client's user.
-        '''
-        username = username or 'current'
-        return await self.get(f'users/{username}')
-
-    async def get_malop_syslog(self, server_id):
-        query = {'serverId': server_id}
-        resp = await self.get('monitor/global/server/logs', query=query)
-
-# endregion
 
 # region MALOPS
     async def get_malops(self):

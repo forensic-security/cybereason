@@ -3,8 +3,9 @@
 > Unofficial Cybereason API client  
 > __(Work in progress)__
 
-## Example
+## Examples
 
+### Save metadata and config for every policy
 ```python
 from cybereason import Cybereason
 import asyncio
@@ -23,3 +24,17 @@ async def dump_policies_config():
 asyncio.run(dump_policies_config())
 ```
 
+### Download all malop syslogs (via script)
+```python
+#!/usr/bin/env python3 -m asyncio
+
+# this shebang is only available since Python 3.8
+# for earlier versions use the asyncio.run approach
+
+from cybereason import Cybereason
+
+async with Cybereason(<organization>, <username>, <password>) as client:
+    for server in await client.get_detection_servers():
+        path = await client.download_malop_syslog(server['id'], '.')
+        print(f'{server["serverName"]} malop syslog was saved in {path.absolute()}')
+```
