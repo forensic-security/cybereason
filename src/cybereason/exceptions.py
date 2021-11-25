@@ -43,17 +43,21 @@ class FilterSyntaxError(CybereasonException, SyntaxError):
     pass
 
 
+def _add_to_doc(doc, text):
+    doc = dedent((doc or '').strip())
+    return f'{doc}\n\n{dedent(text)}'
+
+
 def authz(role):
     '''Adds context to authorization errors.
     '''
     def inner(func):
-        func.__doc__ = dedent(f'''\
-        {(func.__doc__ or '').rstrip()}
-
-        Raises:
-            UnauthorizedRequest: if the user does not have the {role}
-                role assigned.
-        ''')
+        doc = f'''\
+            Raises:
+                UnauthorizedRequest: if the user does not have the {role}
+                    role assigned.            
+        '''
+        func.__doc__ = _add_to_doc(func.__doc__, doc)
 
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -61,5 +65,24 @@ def authz(role):
                 return await func(*args, **kwargs)
             except UnauthorizedRequest as e:
                 raise UnauthorizedRequest(e.url, role) from None
+        return wrapper
+    return inner
+
+
+def min_version(major, minor, release=0):
+    def inner(func):
+        version = f'{major}.{minor}.{release or "x"}'
+        func.__doc__ = _add_to_doc(func.__doc__, f'.. versionadded:: {version}')
+
+        @wraps(func)
+        async def wrapper(self, *args, **kwargs):
+            try:
+                return await func(self, *args, **kwargs)
+            # TODO: status == 404?
+            except Exception as e:
+                if (await self.version) < (major, minor, release):
+                    raise NotImplementedError(
+                        f'This feature is only available since version {version}'
+                    ) from None
         return wrapper
     return inner

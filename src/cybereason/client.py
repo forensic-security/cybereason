@@ -1,12 +1,15 @@
 from typing import Optional, Dict, List, Tuple, Any, AsyncIterator
 from json.decoder import JSONDecodeError
+from io import BytesIO, BufferedIOBase
 from functools import cached_property
 from ipaddress import ip_address
+from pathlib import Path
+
 from httpx import AsyncClient, HTTPStatusError
 
 from .exceptions import (
     AuthenticationError, UnauthorizedRequest, ServerError, ClientError,
-    authz,
+    authz, min_version,
 )
 from .utils import parse_csv
 from .sensors import SensorsMixin
@@ -86,6 +89,27 @@ class Cybereason(SensorsMixin):
     async def delete(self, path: str, query: Optional[Dict[str, Any]]=None):
         return await self._request('DELETE', path, query=query)
 
+    async def raw_download(self, path: str) -> BufferedIOBase:
+        # TODO: return filename
+        buffer = BytesIO()
+        async with self.session.stream('GET', path) as resp:
+            async for chunk in resp.aiter_bytes():
+                # filter out keep-alive chunks
+                if chunk:
+                    buffer.write(chunk)
+            resp.raise_for_status()
+        buffer.seek(0)
+        return buffer
+
+    async def download(
+        self,
+        urlpath:     str,
+        filepath:    Path,
+        *, extract:  bool=False,
+    ):
+        buffer = await self.raw_download(urlpath)
+        # TODO
+
     # FIXME
     async def aiter_pages(
         self,
@@ -109,6 +133,22 @@ class Cybereason(SensorsMixin):
     async def version(self) -> Tuple[int, int, int]:
         resp = await self.get('monitor/global/server/version/all')
         return tuple(int(x) for x in resp['data']['version'].split('.'))
+
+    async def get_users(self) -> List[Dict[str, Any]]:
+        return await self.get('users')
+
+    async def get_user(self, username: Optional[str]=None) -> List[Dict[str, Any]]:
+        '''
+        Args:
+            username: If not specified, returns the client's user.
+        '''
+        username = username or 'current'
+        return await self.get(f'users/{username}')
+
+    async def get_malop_syslog(self, server_id):
+        query = {'serverId': server_id}
+        resp = await self.get('monitor/global/server/logs', query=query)
+
 # endregion
 
 # region MALOPS
@@ -122,13 +162,12 @@ class Cybereason(SensorsMixin):
         '''
         return await self.post('crimes/unified', None)  # TODO
 
+    @min_version(20, 1, 43)
     async def get_malops_labels(
         self,
         malops_ids: Optional[List[str]]=None,
     ) -> List[Dict[str, Any]]:
         '''Returns a list of all Malop labels.
-
-        .. versionadded:: 20.1.43
 
         Args:
             malops_ids: You can add specific Malop GUID identifiers.
@@ -137,25 +176,38 @@ class Cybereason(SensorsMixin):
 # endregion
 
 # region CUSTOM DETECTION RULES
-    async def get_active_custom_rules(self):
+    async def get_active_custom_rules(self) -> List[Dict[str, Any]]:
         '''Retrieve a list of all active custom detection rules.
         '''
-        return await self.get('customRules/decisionFeature/live')
+        resp = await self.get('customRules/decisionFeature/live')
+        # TODO: resp['limitExceed']: bool ?
+        return resp['rules']
 # endregion
 
 # region REPUTATIONS
-    async def get_reputations(self) -> AsyncIterator[Dict[str, Any]]:
+    async def get_reputations(
+        self,
+        reputation: Optional[str]=None,
+    ) -> AsyncIterator[Dict[str, Any]]:
         '''Returns a list of custom reputations for files, IP addresses,
         and domain names.
+
+        Args:
+            reputation: 'blacklist' or 'whitelist'.
         '''
+        # TODO: could be reputation filtered in the query?
         csv = await self.get('classification/download')
 
-        for reputation in parse_csv(
+        for item in parse_csv(
             csv,
             boolean=['prevent execution', 'remove'],
             optional=['comment'],
         ):
-            yield reputation
+            if reputation:
+                if item['reputation'] == reputation:
+                    yield item
+            else:
+                yield item
 
     async def get_ip_reputations(self):
         return await self.post('download_v1/ip_reputation', {})
@@ -201,12 +253,11 @@ class Cybereason(SensorsMixin):
 # endregion
 
 # region INCIDENT RESPONSE
+    @min_version(21, 1, 81)
     @authz('Responder L2')
     async def get_irtools_packages(self):
         '''Retrieves a list of previously uploaded packages from your
         environment.
-
-        .. versionadded:: 21.1.81
         '''
         return await self.get('irtools/packages')
 

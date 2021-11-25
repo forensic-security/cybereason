@@ -3,7 +3,8 @@ from typing import Optional, List, Dict, Any, AsyncIterator
 from .utils import to_list
 from .exceptions import (
     ServerError, ClientError,
-    ResourceExistsError, ResourceNotFoundError, authz,
+    ResourceExistsError, ResourceNotFoundError,
+    authz, min_version,
 )
 
 
@@ -36,11 +37,10 @@ class SensorsMixin:
         # retrieve job results
         return await self.get(f'sensors/action/download-logs/{resp["batchId"]}')
 
+    @min_version(20, 1)
     @authz('System Admin')
     async def get_groups(self):
         '''Retrieves a list of sensor groups.
-
-        .. versioadded:: 20.1.x
         '''
         return await self.get('groups')
 
@@ -97,14 +97,14 @@ class SensorsMixin:
 
         return resp['groupId']
 
+    @min_version(20, 2, 2)
     @authz('System Admin')
     async def edit_group(self, group_id, data):
         '''Edits the details of an existing sensor group.
-
-        .. versioadded:: 20.2.2
         '''
         return await self.post(f'groups/{group_id}', data)
 
+    @min_version(20, 2, 201)
     @authz('System Admin')
     async def delete_group(
         self,
@@ -112,8 +112,6 @@ class SensorsMixin:
         new_group_id: Optional[str]=None,
     ) -> Dict[str, Any]:
         '''Deletes an existing sensor group.
-
-        .. versionadded:: 20.2.201
 
         Args:
             group_id: The ID of the group to be deleted.
@@ -131,12 +129,11 @@ class SensorsMixin:
                 raise
             raise e
 
+    @min_version(20, 1)
     @authz('Sensor Admin L1 or System Admin')
     async def add_to_group(self, group_id, sensors_ids):
         '''Adds the selected sensor(s) to a sensor group to help organize
         sensors in your environment.
-
-        .. versionadded:: 20.1.x
         '''
         data = {
             'sensorsIds': to_list(sensors_ids),
@@ -145,12 +142,11 @@ class SensorsMixin:
         return await self.post('sensors/action/addToGroup', data)
 
     # TODO: you must be assigned to a group to run this request.
+    @min_version(20, 1)
     @authz('Sensor Admin L1')
     async def remove_from_group(self, *sensors_ids, filters: Optional[Any]=None):
         '''Removes a sensor from a sensor group, and assigns it to the
         unassigned group.
-
-        .. versionadded:: 20.1.x
         '''
         data = {'sensorsIds': sensors_ids, 'filters': filters}
         return await self.post('sensors/action/removeFromGroup', data)
