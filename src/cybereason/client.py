@@ -105,7 +105,7 @@ class Cybereason(SystemMixin, SensorsMixin):
             resp.raise_for_status()
 
             filename = resp.headers['content-disposition']
-            filename = re.search(r'\"(.*)\"', filename).group(1)
+            filename = re.search(r'\"(.*?)(?=\"|\Z)', filename).group(1)
 
             async for chunk in resp.aiter_bytes():
                 # filter out keep-alive chunks

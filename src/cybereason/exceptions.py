@@ -80,7 +80,7 @@ def min_version(major, minor, release=0):
                 return await func(self, *args, **kwargs)
             # TODO: status == 404?
             except Exception as e:
-                if (await self.version) < (major, minor, release):
+                if self.version < (major, minor, release):
                     raise NotImplementedError(
                         f'This feature is only available since version {version}'
                     ) from None
