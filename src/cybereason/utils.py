@@ -11,7 +11,7 @@ def parse_csv(
     text:       str,
     *, boolean: List[str]=[],
     optional:   List[str]=[],
-) -> Dict[str, Any]:
+) -> Iterator[Dict[str, Any]]:
     csv = text.splitlines()
 
     for item in DictReader(csv):

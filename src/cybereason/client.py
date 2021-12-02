@@ -2,7 +2,7 @@ from typing import Optional, Dict, List, Tuple, Any, AsyncIterator
 from json.decoder import JSONDecodeError
 from io import BytesIO, BufferedIOBase
 from functools import cached_property
-from ipaddress import ip_address
+from datetime import datetime, timedelta
 from pathlib import Path
 import re
 
@@ -15,12 +15,13 @@ from .exceptions import (
 from .utils import parse_csv, find_next_version
 from .sensors import SensorsMixin
 from .system import SystemMixin
+from .threats import ThreatIntelligenceMixin
 
 DEFAULT_TIMEOUT = 10.0
 DEFAULT_PAGE_SIZE = 10
 
 
-class Cybereason(SystemMixin, SensorsMixin):
+class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
     def __init__(
         self,
         organization: str,
@@ -150,13 +151,20 @@ class Cybereason(SystemMixin, SensorsMixin):
                 yield item
             if not resp['hasMoreResults']:
                 break
-            data['offset'] += page_size
+            data['offset'] += page_size  # TODO: page number?
 
 # region MALOPS
-    async def get_malops(self):
-        '''Retrieve all Malops of all types.
+    async def get_malops(self) -> Any:
+        '''Retrieve all Malops of all types (during the last week).
         '''
-        return await self.post('detection/inbox', None)  # TODO
+        # TODO: allow to specify dates
+        now = datetime.utcnow()
+        week_ago = now - timedelta(days=7)
+        data = {
+            'startTime': int(week_ago.timestamp() * 1000),
+            'endTime': int(now.timestamp() * 1000),
+        }
+        return await self.post('detection/inbox', data)
 
     async def get_active_malops(self):
         '''Get all Malops currently active.
@@ -212,24 +220,6 @@ class Cybereason(SystemMixin, SensorsMixin):
 
     async def get_ip_reputations(self):
         return await self.post('download_v1/ip_reputation', {})
-# endregion
-
-# region THREAT INTELLIGENCE
-    async def get_ip_threats(self, ip):
-        '''Returns details on IP address reputations based on the
-        Cybereason threat intelligence service.
-        '''
-        # TODO: multiple ips?
-        ip = ip_address(ip)
-        data = {
-            'requestData': [{
-                'requestKey': {
-                    'ipAddress': str(ip),
-                    'addressType': f'Ipv{ip.version}',
-                }
-            }]
-        }
-        return await self.post('classification_v1/ip_batch', data)
 # endregion
 
 # region ISOLATION RULES

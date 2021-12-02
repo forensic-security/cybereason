@@ -3,6 +3,13 @@
 > Unofficial Cybereason API client  
 > __(Work in progress)__
 
+
+## Installation
+
+<a href="https://pypi.org/project/cybereason/"><pre>
+pip install cybereason
+</pre></a>
+
 ## Examples
 
 ### Save metadata and config for every policy
@@ -10,7 +17,6 @@
 from cybereason import Cybereason
 import asyncio
 import json
-
 
 async def dump_policies_config():
     '''Save metadata and config for every policy.
@@ -29,7 +35,7 @@ asyncio.run(dump_policies_config())
 #!/usr/bin/env python3 -m asyncio
 
 # this shebang is only available since Python 3.8
-# for earlier versions use the asyncio.run approach
+# for earlier versions use the traditional approach
 
 from cybereason import Cybereason
 

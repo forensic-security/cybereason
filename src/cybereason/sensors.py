@@ -37,6 +37,9 @@ class SensorsMixin:
         # retrieve job results
         return await self.get(f'sensors/action/download-logs/{resp["batchId"]}')
 
+    async def get_sensors_overview(self) -> Dict[str, Dict[str, Any]]:
+        return await self.get('sensors/overview')
+
     @min_version(20, 1)
     @authz('System Admin')
     async def get_groups(self):
