@@ -58,7 +58,10 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         await self.login()
         return self
 
-    async def __aexit__(self, *e) -> None:
+    async def __aexit__(self, exc_type, exc_value, traceback) -> None:
+        await self.aclose()
+
+    async def aclose(self) -> None:
         if hasattr(self, 'session'):
             await self.session.aclose()
 

@@ -61,7 +61,11 @@ class SystemMixin:
 
     async def get_latest_installers(self, server_id: Optional[str]=None) -> List[Dict[str, Any]]:
         query = {'serverId': server_id or self.server_id}
-        return await self.get('monitor/global/versions/latest', query=query)
+        resp = await self.get('monitor/global/versions/latest', query=query)
+        # denormalize output
+        return [{**d, **v, **s} for s in resp
+                for v in s.pop('versions')['full']
+                for d in v.pop('downloads')]
 
     async def download_installer(
         self,
@@ -81,16 +85,21 @@ class SystemMixin:
 
         server_id = server_id or self.server_id
 
-        download = [
-            a['downloadId'] for n in await self.get_latest_installers(server_id)
-            for (k, v) in n.items() if n['osName'] == name and k == 'versions'
-            for a in v['full'][0]['downloads'] if a['architecture'] == arch
+        # download_id = [
+        #     a['downloadId'] for n in await self.get_latest_installers(server_id)
+        #     for (k, v) in n.items() if n['osName'] == name and k == 'versions'
+        #     for a in v['full'][0]['downloads'] if a['architecture'] == arch
+        # ][0]
+
+        download_id = [
+            s['downloadId'] for s in await self.get_latest_installers(server_id)
+            if s['osName'] == name and s['architecture'] == arch
         ][0]
 
         return await self.download(
             'monitor/global/version/download/platform/',
             folder=folder,
-            query={'serverId': server_id, 'downloadId': download},
+            query={'serverId': server_id, 'downloadId': download_id},
         )
 
     async def download_malop_syslog(
