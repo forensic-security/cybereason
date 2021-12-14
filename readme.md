@@ -1,7 +1,7 @@
 # Cybereason
 
 > Unofficial Cybereason API client  
-> __(Work in progress)__
+> __&#9888; Work in progress &#9888;__
 
 
 ## Installation
@@ -44,3 +44,7 @@ async with Cybereason(<organization>, <username>, <password>) as client:
         path = await client.download_malop_syslog(server['id'], '.')
         print(f'{server["serverName"]} malop syslog was saved in {path.absolute()}')
 ```
+
+---
+
+Copyright &copy; 2021 [Forensic & Security](https://forensic-security.com/)

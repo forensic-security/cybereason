@@ -7,6 +7,16 @@ BOOL = {'true': True, 'false': False}
 NONE = {'null': None}
 
 
+class Unset:
+    def __bool__(self):
+        return False
+
+    def __contains__(self, o):
+        return False
+
+unset = Unset()
+
+
 def parse_csv(
     text:       str,
     *, boolean: List[str]=[],
@@ -47,9 +57,8 @@ def find_next_version(path: Path) -> Path:
 
     value = -1
     for item in parent.glob(f'*{suffix}'):
-        name = item.name
-        if name.startswith(stem):
-            name = name.split('.')
+        if item.name.startswith(stem):
+            name = item.name.split('.')
             if name[1:-1] and name[1].isdigit():
                 value = max(value, int(name[1]))
     value +=1

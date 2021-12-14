@@ -1,6 +1,5 @@
-from typing import Optional, List, Dict, Any, AsyncIterator
-
-from .utils import to_list
+from typing import Union, Optional, List, Dict, Any, AsyncIterator
+from .utils import to_list, Unset, unset
 from .exceptions import (
     ServerError, ClientError,
     ResourceExistsError, ResourceNotFoundError,
@@ -9,14 +8,19 @@ from .exceptions import (
 
 
 class SensorsMixin:
-    async def get_sensors(self, filters=[], page_size: int=10):
+    @authz('System Admin')
+    async def get_sensors(
+        self,
+        filters:   Optional[List[Any]]=None,
+        page_size: Optional[int]=None,
+    ) -> AsyncIterator[Dict[str, Any]]:
         '''Returns details on all or a selected group of sensors.
         '''
         async for sensor in self.aiter_pages(
             path='sensors/query',
-            data={'filters': filters},
+            data={'filters': filters or []},
             key='sensors',
-            page_size=page_size,
+            # page_size=page_size,
         ):
             yield sensor
 
@@ -52,7 +56,7 @@ class SensorsMixin:
         try:
             group = [g for g in resp if g['name'] == name][0]
         except IndexError:
-            raise ResourceNotFoundError(f'There is not a group with name: "{name}".')
+            raise ResourceNotFoundError(f'There is not a group with name: "{name}"') from None
         return group
 
     async def get_group_by_id(self, group_id: str) -> Dict[str, Any]:
@@ -60,7 +64,7 @@ class SensorsMixin:
         try:
             group = [g for g in resp if g['id'] == group_id][0]
         except IndexError:
-            raise ResourceNotFoundError(f'There is not a group with ID: "{group_id}"')
+            raise ResourceNotFoundError(f'There is not a group with ID: "{group_id}"') from None
         return group
 
     @authz('System Admin')
@@ -102,9 +106,23 @@ class SensorsMixin:
 
     @min_version(20, 2, 2)
     @authz('System Admin')
-    async def edit_group(self, group_id, data):
+    async def edit_group(
+        self,
+        group_id:    str,
+        name:        Union[Unset, str]=unset,
+        description: Union[Unset, str]=unset,
+        rules:       Union[Unset, List[Dict[str, Any]]]=unset,
+        policy_id:   Union[Unset, str]=unset,
+    ):
         '''Edits the details of an existing sensor group.
         '''
+        group = await self.get_group_by_id(group_id)
+        data = {
+            'name': group['name'] if name is unset else name,
+            'description': group['description'] if description is unset else description,
+            'groupAssignRule': group['groupAssignRule'] if rules is unset else rules,
+            'policyId': group['policyId'] if policy_id is unset else policy_id,
+        }
         return await self.post(f'groups/{group_id}', data)
 
     @min_version(20, 2, 201)
@@ -172,3 +190,27 @@ class SensorsMixin:
 
     async def get_policy(self, policy_id: str) -> Dict[str, Any]:
         return await self.get(f'policies/{policy_id}')
+
+    async def get_default_policy(self) -> Dict[str, Any]:
+        async for policy in self.get_policies():
+            if policy['metadata']['isDefault']:
+                return policy
+        raise ResourceNotFoundError('Default policy not found')
+
+    async def create_policy(self, data, unique_name: bool=False) -> None:
+        if unique_name:
+            async for policy in self.get_policies():
+                if policy['metadata']['name'] == data['nameDescription']['name']:
+                    raise ResourceExistsError(data['nameDescription']['name'])
+        return await self.post('policies', data)
+
+    async def delete_policy(
+        self,
+        policy_id: str,
+        assign_to: Optional[str]=None,
+    ) -> Dict[str, Any]:
+        if assign_to is None:
+            default = await self.get_default_policy()
+            assign_to = default['metadata']['id']
+        query = {'assignToPolicyId': assign_to}
+        return await self.delete(f'policies/{policy_id}', query)

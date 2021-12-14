@@ -18,7 +18,7 @@ from .system import SystemMixin
 from .threats import ThreatIntelligenceMixin
 
 DEFAULT_TIMEOUT = 10.0
-DEFAULT_PAGE_SIZE = 10
+DEFAULT_PAGE_SIZE = 20
 
 
 class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
@@ -60,6 +60,8 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:
         await self.aclose()
+        if exc_type:
+            raise exc_type(exc_value)
 
     async def aclose(self) -> None:
         if hasattr(self, 'session'):
@@ -148,13 +150,18 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         sort:      str='ASC',
     ) -> AsyncIterator[Dict[str, Any]]:
         data = {**data, 'limit': page_size, 'offset': 0, 'sortDirection': sort}
+
         while True:
             resp = await self.post(path, data)
+
             for item in resp[key]:
                 yield item
+
             if not resp['hasMoreResults']:
                 break
-            data['offset'] += page_size  # TODO: page number?
+
+            data['offset'] += 1  # XXX: page number
+
 
 # region MALOPS
     async def get_malops(self) -> Any:
