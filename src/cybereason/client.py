@@ -28,12 +28,14 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         username:     str,
         password:     str,
         proxy:        Optional[str]=None,
+        topt_code:    Optional[str]=None,
         timeout:      float=DEFAULT_TIMEOUT,
     ):
         self.organization = organization
         self.username = username
         self.password = password
         self.proxy = proxy
+        self.topt_code = topt_code
         self.timeout = timeout
 
     @cached_property
@@ -48,10 +50,24 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
     async def login(self) -> None:
         auth = {'username': self.username, 'password': self.password}
         headers = {'content-type': 'application/x-www-form-urlencoded'}
-        resp = await self.session.post('login.html', data=auth, headers=headers)
-        if 'error' in str(resp.next_request):
+        resp = await self.session.post('login.html', data=auth, headers=headers, follow_redirects=True)
+
+        if 'error' in str(resp.url):
             await self.session.aclose()
-            raise AuthenticationError
+            raise AuthenticationError('Invalid credentials')
+
+        if 'Two factor authentication' in resp.text:
+            if not self.topt_code:
+                await self.session.aclose()
+                raise AuthenticationError('TOPT code (2FA) is required')
+
+            data = {'totpCode': self.topt_code, 'submit': 'Login'}
+            resp = await self.session.post('', data=data, headers=headers, follow_redirects=True)
+
+            if 'error' in str(resp.url):
+                await self.session.aclose()
+                raise AuthenticationError('Invalid TOPT code')
+
         self.session.base_url = f'{self.session.base_url}/rest'
 
     async def __aenter__(self) -> 'Cybereason':
@@ -140,7 +156,6 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
                 f.write(buffer.read())
             return filepath
 
-    # FIXME
     async def aiter_pages(
         self,
         path:      str,
@@ -164,14 +179,14 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 
 
 # region MALOPS
-    async def get_malops(self) -> Any:
-        '''Retrieve all Malops of all types (during the last week).
+    async def get_malops(self, days_ago: int=7) -> Any:
+        '''Retrieve all Malops of all types (default: during the last week).
         '''
-        # TODO: allow to specify dates
+        # TODO: allow to specify end date
         now = datetime.utcnow()
-        week_ago = now - timedelta(days=7)
+        ago = now - timedelta(days=days_ago)
         data = {
-            'startTime': int(week_ago.timestamp() * 1000),
+            'startTime': int(ago.timestamp() * 1000),
             'endTime': int(now.timestamp() * 1000),
         }
         return await self.post('detection/inbox', data)

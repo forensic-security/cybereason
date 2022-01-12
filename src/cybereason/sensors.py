@@ -11,10 +11,14 @@ class SensorsMixin:
     @authz('System Admin')
     async def get_sensors(
         self,
-        filters:   Optional[List[Any]]=None,
-        page_size: Optional[int]=None,
+        *, archived: bool=True,
+        filters:     Optional[List[Any]]=None,
+        page_size:   Optional[int]=None,
     ) -> AsyncIterator[Dict[str, Any]]:
         '''Returns details on all or a selected group of sensors.
+
+        Args:
+            archived: show archived sensors.
         '''
         async for sensor in self.aiter_pages(
             path='sensors/query',
@@ -54,18 +58,16 @@ class SensorsMixin:
     async def get_group_by_name(self, name: str) -> Dict[str, Any]:
         resp = await self.get_groups()
         try:
-            group = [g for g in resp if g['name'] == name][0]
+            return [g for g in resp if g['name'] == name][0]
         except IndexError:
             raise ResourceNotFoundError(f'There is not a group with name: "{name}"') from None
-        return group
 
     async def get_group_by_id(self, group_id: str) -> Dict[str, Any]:
         resp = await self.get_groups()
         try:
-            group = [g for g in resp if g['id'] == group_id][0]
+            return [g for g in resp if g['id'] == group_id][0]
         except IndexError:
             raise ResourceNotFoundError(f'There is not a group with ID: "{group_id}"') from None
-        return group
 
     @authz('System Admin')
     async def create_group(
