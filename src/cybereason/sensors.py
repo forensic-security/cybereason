@@ -1,7 +1,8 @@
 from typing import Union, Optional, List, Dict, Any, AsyncIterator
+
 from .utils import to_list, Unset, unset
 from .exceptions import (
-    ServerError, ClientError,
+    AccessDenied, ServerError, ClientError,
     ResourceExistsError, ResourceNotFoundError,
     authz, min_version,
 )
@@ -20,9 +21,17 @@ class SensorsMixin:
         Args:
             archived: show archived sensors.
         '''
+        filters = filters or []
+        if not archived:
+            filters.append({
+                'fieldName': 'status',
+                'operator': 'NotEquals',
+                'values': ['Archived'],
+            })
+
         async for sensor in self.aiter_pages(
             path='sensors/query',
-            data={'filters': filters or []},
+            data={'filters': filters},
             key='sensors',
             # page_size=page_size,
         ):
@@ -48,6 +57,7 @@ class SensorsMixin:
     async def get_sensors_overview(self) -> Dict[str, Dict[str, Any]]:
         return await self.get('sensors/overview')
 
+# region GROUPS
     @min_version(20, 1)
     @authz('System Admin')
     async def get_groups(self):
@@ -173,7 +183,9 @@ class SensorsMixin:
         '''
         data = {'sensorsIds': sensors_ids, 'filters': filters}
         return await self.post('sensors/action/removeFromGroup', data)
+# endregion
 
+# region POLICIES
     # TODO: paginate
     async def get_policies(
         self,
@@ -216,3 +228,60 @@ class SensorsMixin:
             assign_to = default['metadata']['id']
         query = {'assignToPolicyId': assign_to}
         return await self.delete(f'policies/{policy_id}', query)
+# endregion
+
+# region ACTIONS
+    async def set_remote_shell_mode(
+        self,
+        sensors_ids: Union[str, List[str]],
+        enabled:     bool=False,
+    ) -> Dict[str, Any]:
+        data = {
+            'argument': 'AC_ENABLED' if enabled else 'AC_DISABLED',
+            'sensorsIds': to_list(sensors_ids),
+        }
+        return await self.post('sensors/action/setRemoteShellStatus', data=data)
+
+    async def set_app_control_mode(
+        self,
+        sensors_ids: Union[str, List[str]],
+        enabled:     bool=False,
+    ) -> Dict[str, Any]:
+        data = {
+            'argument': 'ENABLE' if enabled else 'DISABLE',
+            'sensorsIds': to_list(sensors_ids),
+        }
+        return await self.post('sensors/action/setPreventionMode', data=data)
+# endregion
+
+    async def open_remote_shell(self, pylum_id: str, restricted: bool=True) -> Dict[str, Optional[str]]:
+        '''Opens a remote shell session and returns the data needed to
+        establish a websocket connection.
+        '''
+        data = {
+            'cols': 112,
+            'pylumId': pylum_id,
+            'mode': 'RESTRICTED' if restricted else 'NON_RESTRICTED',
+            'twoFaCode': self.totp_code,
+        }
+
+        try:
+            resp = await self.post('shell/start', data=data)
+        except AccessDenied:
+            # TODO: check if remote shell is enabled
+            raise
+
+        path = '/'.join(('', 'shell', pylum_id, resp['sensorSessionId']))
+
+        return {
+            'uri': str(self.session.base_url.copy_with(scheme='wss', path=path)),
+            'cookie': f'JSESSIONID={self.session.cookies.get("JSESSIONID")}',
+            'proxy': self.proxy,
+            'session_id': resp['sensorSessionId'],
+        }
+
+    async def close_remote_shell(self, pylum_id: str, session_id: str) -> None:
+        '''Closes a remote shell session.
+        '''
+        data = {'pylumId': pylum_id, 'sensorSessionId': session_id}
+        await self.post('shell/terminate', data=data)

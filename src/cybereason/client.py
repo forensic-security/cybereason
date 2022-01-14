@@ -9,7 +9,7 @@ import re
 from httpx import AsyncClient, HTTPStatusError
 
 from .exceptions import (
-    AuthenticationError, ResourceNotFoundError, UnauthorizedRequest, ServerError, ClientError,
+    AccessDenied, AuthenticationError, ResourceNotFoundError, UnauthorizedRequest, ServerError, ClientError,
     authz, min_version,
 )
 from .utils import parse_csv, find_next_version
@@ -28,14 +28,14 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         username:     str,
         password:     str,
         proxy:        Optional[str]=None,
-        topt_code:    Optional[str]=None,
+        totp_code:    Optional[str]=None,
         timeout:      float=DEFAULT_TIMEOUT,
     ):
         self.organization = organization
         self.username = username
         self.password = password
         self.proxy = proxy
-        self.topt_code = topt_code
+        self.totp_code = totp_code
         self.timeout = timeout
 
     @cached_property
@@ -48,27 +48,35 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         )
 
     async def login(self) -> None:
-        auth = {'username': self.username, 'password': self.password}
         headers = {'content-type': 'application/x-www-form-urlencoded'}
-        resp = await self.session.post('login.html', data=auth, headers=headers, follow_redirects=True)
+        options = {'headers': headers, 'follow_redirects': True}
+
+        auth = {'username': self.username, 'password': self.password}
+        resp = await self.session.post('login.html', data=auth, **options)
 
         if 'error' in str(resp.url):
             await self.session.aclose()
             raise AuthenticationError('Invalid credentials')
 
         if 'Two factor authentication' in resp.text:
-            if not self.topt_code:
+            if not self.totp_code:
                 await self.session.aclose()
-                raise AuthenticationError('TOPT code (2FA) is required')
+                raise AuthenticationError('TOTP code (2FA) is required')
 
-            data = {'totpCode': self.topt_code, 'submit': 'Login'}
-            resp = await self.session.post('', data=data, headers=headers, follow_redirects=True)
+            totp = {'totpCode': self.totp_code, 'submit': 'Login'}
+            resp = await self.session.post('', data=totp, **options)
 
             if 'error' in str(resp.url):
                 await self.session.aclose()
-                raise AuthenticationError('Invalid TOPT code')
+                raise AuthenticationError('Invalid TOTP code')
 
         self.session.base_url = f'{self.session.base_url}/rest'
+
+    async def logout(self) -> None:
+        try:
+            await self.get(self.session.base_url.copy_with(path='/logout'))
+        except AuthenticationError:
+            pass
 
     async def __aenter__(self) -> 'Cybereason':
         await self.login()
@@ -81,6 +89,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 
     async def aclose(self) -> None:
         if hasattr(self, 'session'):
+            await self.logout()
             await self.session.aclose()
 
     async def _request(self, method: str, path: str, data: Any=None, query: Any=None) -> Any:
@@ -93,6 +102,8 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
                 raise UnauthorizedRequest(e.request.url) from None
             elif e.response.status_code == 400:
                 raise ClientError
+            elif e.response.status_code == 412:
+                raise AccessDenied(e.response.text) from None
             elif e.response.status_code == 500:
                 raise ServerError
             elif e.response.status_code == 302:
@@ -176,7 +187,6 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
                 break
 
             data['offset'] += 1  # XXX: page number
-
 
 # region MALOPS
     async def get_malops(self, days_ago: int=7) -> Any:

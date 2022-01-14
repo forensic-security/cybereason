@@ -47,4 +47,4 @@ async with Cybereason(<organization>, <username>, <password>) as client:
 
 ---
 
-Copyright &copy; 2021 [Forensic & Security](https://forensic-security.com/)
+Copyright &copy; 2021-2022 [Forensic & Security](https://forensic-security.com/)

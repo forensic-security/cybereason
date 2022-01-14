@@ -46,6 +46,10 @@ class FilterSyntaxError(CybereasonException, SyntaxError):
     pass
 
 
+class AccessDenied(CybereasonException):
+    pass
+
+
 def _add_to_doc(doc: Optional[str], text: str) -> str:
     doc = dedent((doc or '').strip())
     return f'{doc}\n\n{dedent(text)}'
