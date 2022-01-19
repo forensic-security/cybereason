@@ -1,4 +1,6 @@
 from typing import Union, Optional, List, Dict, Any, AsyncIterator
+from pathlib import Path
+from os import PathLike
 
 from .utils import to_list, Unset, unset
 from .exceptions import (
@@ -285,3 +287,22 @@ class SensorsMixin:
         '''
         data = {'pylumId': pylum_id, 'sensorSessionId': session_id}
         await self.post('shell/terminate', data=data)
+
+    async def download_file(
+        self,
+        pylum_id: str,
+        filepath: PathLike,
+        target:   Optional[PathLike]=None,
+    ) -> Path:
+        if not target:
+            target = Path(filepath).name
+        data = {'path': filepath, 'pylumId': pylum_id}
+        async with self.session.stream('POST', 'file-search/fetch-direct', json=data) as resp:
+            resp.raise_for_status()
+
+            with open(target) as dest:
+                async for chunk in resp.aiter_bytes():
+                    if chunk:
+                        dest.write(chunk)
+
+        return target

@@ -7,7 +7,7 @@ AsyncFunc = Union[AsyncIterator, Callable[..., Awaitable[None]]]
 
 
 class CybereasonException(Exception):
-    pass
+    ...
 
 
 class UnauthorizedRequest(CybereasonException):
@@ -23,31 +23,39 @@ class UnauthorizedRequest(CybereasonException):
 
 
 class AuthenticationError(CybereasonException):
-    pass
+    ...
 
 
 class ServerError(CybereasonException):
-    pass
+    ...
 
 
 class ClientError(CybereasonException):
-    pass
+    ...
 
 
 class ResourceNotFoundError(CybereasonException):
-    pass
+    ...
 
 
 class ResourceExistsError(CybereasonException):
-    pass
+    ...
 
 
 class FilterSyntaxError(CybereasonException, SyntaxError):
-    pass
+    ...
 
 
 class AccessDenied(CybereasonException):
-    pass
+    ...
+
+
+class ServiceDisabled(ServerError):
+    ...
+
+
+class ConnectionError(CybereasonException):
+    ...
 
 
 def _add_to_doc(doc: Optional[str], text: str) -> str:

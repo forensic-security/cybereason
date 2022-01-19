@@ -1,15 +1,16 @@
-from typing import Optional, Dict, List, Tuple, Any, AsyncIterator
+from typing import Optional, Literal, Dict, List, Tuple, Any, AsyncIterator
 from json.decoder import JSONDecodeError
 from io import BytesIO, BufferedIOBase
 from functools import cached_property
 from datetime import datetime, timedelta
 from pathlib import Path
+from os import PathLike
 import re
 
-from httpx import AsyncClient, HTTPStatusError
+from httpx import AsyncClient, HTTPStatusError, ConnectError
 
 from .exceptions import (
-    AccessDenied, AuthenticationError, ResourceNotFoundError, UnauthorizedRequest, ServerError, ClientError,
+    AccessDenied, AuthenticationError, ResourceNotFoundError, ServiceDisabled, UnauthorizedRequest, ServerError, ClientError,
     authz, min_version,
 )
 from .utils import parse_csv, find_next_version
@@ -52,7 +53,10 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         options = {'headers': headers, 'follow_redirects': True}
 
         auth = {'username': self.username, 'password': self.password}
-        resp = await self.session.post('login.html', data=auth, **options)
+        try:
+            resp = await self.session.post('login.html', data=auth, **options)
+        except ConnectError as e:
+            raise ConnectionError(e) from None
 
         if 'error' in str(resp.url):
             await self.session.aclose()
@@ -92,8 +96,17 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
             await self.logout()
             await self.session.aclose()
 
-    async def _request(self, method: str, path: str, data: Any=None, query: Any=None) -> Any:
-        resp = await self.session.request(method, path, json=data, params=query)
+    async def _request(
+        self,
+        method: str,
+        path:   str,
+        data:   Any=None,
+        query:  Any=None,
+        files:  Optional[Dict[str,Any]]=None,
+    ) -> Any:
+        resp = await self.session.request(
+            method, path, json=data, params=query, files=files,
+        )
 
         try:
             resp.raise_for_status()
@@ -118,8 +131,8 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
     async def get(self, path: str, query: Optional[Dict[str, Any]]=None):
         return await self._request('GET', path, query=query)
 
-    async def post(self, path: str, data: Any):
-        return await self._request('POST', path, data=data)
+    async def post(self, path: str, data: Any, files: Optional[Dict[str, Any]]=None):
+        return await self._request('POST', path, data=data, files=files)
 
     async def put(self, path: str, data: Any):
         return await self._request('PUT', path, data=data)
@@ -336,6 +349,65 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         environment.
         '''
         return await self.get('irtools/packages')
+
+    @min_version(21, 1, 81)
+    @authz('Responder L2')
+    async def upload_irtools_package(
+        self,
+        name:        str,
+        filepath:    PathLike,
+        description: str,
+        run_command: Optional[str]=None,
+        output_dir:  Optional[str]=None,
+        platform:    Optional[Literal['x86', 'x64']]=None,
+    ) -> None:
+        '''Enables you to upload a package for a third-party IR tool to
+        your Cybereason platform or upgrade a previously uploaded package,
+        and then deploy that package to selected machines.
+
+        The maximum file size for a tool package file is 100 MB.
+
+        Args:
+            name: The name for the package. You must use a unique name.
+            info: The full file name for the package file.
+            description: A description for the tool.
+            run_command: An appropriate command for the tool when it runs.
+            output_dir: The folder to which to send the output from the
+                tool's execution.
+            platform: OS bitness: either ``x64`` or ``x86``.
+        '''
+        data = {
+            'pacakgeName': name,
+            'packageOSInfoList': {'osTypeGroup': 'WINDOWS_TYPES'},
+            'packageContentType': 'FILE',
+            'posixPermissions': 'EXECUTE',
+            'description': description,
+        }
+
+        if platform:
+            try:
+                platform = {'x86': 'ARCH_X86', 'x64': 'ARCH_AMD64'}
+            except KeyError:
+                raise ValueError("Platform must be 'x86' or 'x64'") from None
+            data['packageOSInfoList']['platform'] = platform
+
+        if run_command or output_dir:
+            data['packageRunConfiguration'] = {}
+            if run_command:
+                data['packageRunConfiguration']['runCommand'] = run_command
+            if output_dir:
+                data['packageRunConfiguration']['outputDir'] = output_dir
+
+        try:
+            package_info = 'file', open(filepath, 'rb'), 'application/octet-stream'
+        except FileNotFoundError:
+            raise ResourceNotFoundError(filepath) from None
+        files = {'packageInfo': package_info}
+
+        try:
+            await self.post('irtools/upload', data=data, files=files)
+        except ServiceDisabled:
+            raise ServiceDisabled('Packages delivery service is disabled') from None
 
     async def get_credentials(self):
         '''Retrieves credentials for a predefined GCP bucket of your
