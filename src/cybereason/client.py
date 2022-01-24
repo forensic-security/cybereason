@@ -5,6 +5,7 @@ from functools import cached_property
 from datetime import datetime, timedelta
 from pathlib import Path
 from os import PathLike
+import logging
 import re
 
 from httpx import AsyncClient, HTTPStatusError, ConnectError
@@ -20,6 +21,8 @@ from .threats import ThreatIntelligenceMixin
 
 DEFAULT_TIMEOUT = 10.0
 DEFAULT_PAGE_SIZE = 20
+
+log = logging.getLogger(__name__)
 
 
 class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
@@ -169,16 +172,37 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         extract:  bool=False,
     ) -> Path:
         filename, buffer = await self.raw_download(path, query=query)
+        unknown = False
+        folder = Path(folder)
+        folder.mkdir(exist_ok=True, parents=True)
 
         if extract:
-            folder = find_next_version(folder)
-            # TODO
-            return folder
-        else:
-            filepath = find_next_version(Path(folder, filename))
-            with open(filepath, 'wb') as f:
+            subfolder, ext = filename.rsplit('.', 1)
+            if ext == 'zip':
+                import zipfile
+                openfile = lambda b: zipfile.ZipFile(b, mode='r')
+            elif ext == 'gz':
+                import tarfile
+                openfile = lambda b: tarfile.open(fileobj=b, mode='r:gz')
+            else:
+                unknown = True
+                log.warning('Unknown compression method: %s', filename.name)
+
+            if not unknown:
+                destpath = folder / subfolder
+                archive = openfile(buffer)
+                archive.extractall(path=destpath)
+                log.info('%s extracted into %s', filename, destpath)
+
+        if not extract or unknown:
+            destpath = folder / filename
+
+            with open(folder / filename, 'wb') as f:
                 f.write(buffer.read())
-            return filepath
+
+            log.info('%s saved as %s', filename, destpath)
+
+        return destpath
 
     async def aiter_pages(
         self,

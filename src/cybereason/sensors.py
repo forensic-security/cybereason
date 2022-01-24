@@ -296,7 +296,7 @@ class SensorsMixin:
     ) -> Path:
         if not target:
             target = Path(filepath).name
-        data = {'path': filepath, 'pylumId': pylum_id}
+        data = {'path': str(filepath), 'pylumId': pylum_id}
         async with self.session.stream('POST', 'file-search/fetch-direct', json=data) as resp:
             resp.raise_for_status()
 
