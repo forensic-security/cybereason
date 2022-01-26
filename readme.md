@@ -1,7 +1,6 @@
 # Cybereason
 
-> Unofficial Cybereason API client  
-> __&#9888; Work in progress &#9888;__
+> Async Cybereason API client
 
 
 ## Installation
@@ -9,6 +8,9 @@
 <a href="https://pypi.org/project/cybereason/"><pre>
 pip install cybereason
 </pre></a>
+
+Run `pip install cybereason[zip]` to enable on-the-fly extraction of files
+downloaded from sensors.
 
 ## Examples
 

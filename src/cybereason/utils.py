@@ -1,7 +1,13 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TYPE_CHECKING
 from collections.abc import Iterable, Iterator
 from csv import DictReader
 from pathlib import Path
+from httpx import Response
+import re
+
+if TYPE_CHECKING:
+    from typing import Iterator
+
 
 BOOL = {'true': True, 'false': False}
 NONE = {'null': None}
@@ -21,7 +27,7 @@ def parse_csv(
     text:       str,
     *, boolean: List[str]=[],
     optional:   List[str]=[],
-) -> Iterator[Dict[str, Any]]:
+) -> 'Iterator[Dict[str, Any]]':
     csv = text.splitlines()
 
     for item in DictReader(csv):
@@ -39,6 +45,19 @@ def to_list(obj) -> List[Any]:
         if not isinstance(obj, (str, bytes)):
             return obj
     return [obj]
+
+
+# TODO: complete, but beware of SensorsMixin.download_file:
+#   the lack of the header is used as an indicator of the
+#   "file not found" error
+def get_filename(response: Response) -> str:
+    '''Extract filename from an HTTP response.
+    '''
+    try:
+        header = response.headers['content-disposition']
+        return re.search(r'\"(.*?)(?=\"|\Z)', header).group(1)
+    except (KeyError, AttributeError):
+        raise FileNotFoundError from None
 
 
 def find_next_version(path: Path) -> Path:

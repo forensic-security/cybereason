@@ -1,4 +1,4 @@
-from typing import Optional, Literal, Dict, List, Tuple, Any, AsyncIterator
+from typing import Optional, Literal, Dict, List, Tuple, Any, AsyncIterator, TYPE_CHECKING
 from json.decoder import JSONDecodeError
 from io import BytesIO, BufferedIOBase
 from functools import cached_property
@@ -6,18 +6,26 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from os import PathLike
 import logging
-import re
 
+# monkey-patch to allow multiple {'file-encoding': 'chunked'} headers
+import httpx
+from ._patch import normalize_and_validate
+httpx._transports.default.httpcore._async.http11.h11._headers.normalize_and_validate = normalize_and_validate
 from httpx import AsyncClient, HTTPStatusError, ConnectError
 
 from .exceptions import (
     AccessDenied, AuthenticationError, ResourceNotFoundError, ServiceDisabled, UnauthorizedRequest, ServerError, ClientError,
     authz, min_version,
 )
-from .utils import parse_csv, find_next_version
+from .utils import parse_csv, find_next_version, get_filename
 from .sensors import SensorsMixin
 from .system import SystemMixin
 from .threats import ThreatIntelligenceMixin
+
+if TYPE_CHECKING:
+    from typing import Callable, Union
+    from tarfile import TarFile
+    from zipfile import ZipFile
 
 DEFAULT_TIMEOUT = 10.0
 DEFAULT_PAGE_SIZE = 20
@@ -106,6 +114,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         data:   Any=None,
         query:  Any=None,
         files:  Optional[Dict[str,Any]]=None,
+        raw:    bool=False,
     ) -> Any:
         resp = await self.session.request(
             method, path, json=data, params=query, files=files,
@@ -129,10 +138,18 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         try:
             return resp.json()
         except JSONDecodeError:
-            return resp.content.decode()
+            if raw:
+                return resp.content
+            else:
+                return resp.content.decode()
 
-    async def get(self, path: str, query: Optional[Dict[str, Any]]=None):
-        return await self._request('GET', path, query=query)
+    async def get(
+        self,
+        path:  str,
+        query: Optional[Dict[str, Any]]=None,
+        raw:   bool=False,
+    ):
+        return await self._request('GET', path, query=query, raw=raw)
 
     async def post(self, path: str, data: Any, files: Optional[Dict[str, Any]]=None):
         return await self._request('POST', path, data=data, files=files)
@@ -153,8 +170,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         async with self.session.stream('GET', path, params=query) as resp:
             resp.raise_for_status()
 
-            filename = resp.headers['content-disposition']
-            filename = re.search(r'\"(.*?)(?=\"|\Z)', filename).group(1)
+            filename = get_filename(resp)
 
             async for chunk in resp.aiter_bytes():
                 # filter out keep-alive chunks
@@ -177,6 +193,8 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         folder.mkdir(exist_ok=True, parents=True)
 
         if extract:
+            openfile: 'Callable[[Any], Union[TarFile, ZipFile]]'
+
             subfolder, ext = filename.rsplit('.', 1)
             if ext == 'zip':
                 import zipfile
@@ -186,7 +204,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
                 openfile = lambda b: tarfile.open(fileobj=b, mode='r:gz')
             else:
                 unknown = True
-                log.warning('Unknown compression method: %s', filename.name)
+                log.warning('Unknown compression method: %s', filename)
 
             if not unknown:
                 destpath = folder / subfolder
@@ -410,10 +428,10 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 
         if platform:
             try:
-                platform = {'x86': 'ARCH_X86', 'x64': 'ARCH_AMD64'}
+                _platform = dict(x86='ARCH_X86', x64='ARCH_AMD64')[platform]
             except KeyError:
                 raise ValueError("Platform must be 'x86' or 'x64'") from None
-            data['packageOSInfoList']['platform'] = platform
+            data['packageOSInfoList']['platform'] = _platform
 
         if run_command or output_dir:
             data['packageRunConfiguration'] = {}

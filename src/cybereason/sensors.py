@@ -1,13 +1,17 @@
 from typing import Union, Optional, List, Dict, Any, AsyncIterator
 from pathlib import Path
 from os import PathLike
+import logging
+import asyncio
 
-from .utils import to_list, Unset, unset
+from .utils import to_list, Unset, unset, get_filename
 from .exceptions import (
     AccessDenied, ServerError, ClientError,
     ResourceExistsError, ResourceNotFoundError,
     authz, min_version,
 )
+
+log = logging.getLogger(__name__)
 
 
 class SensorsMixin:
@@ -46,15 +50,22 @@ class SensorsMixin:
         return await self.get('sensors/allActions')
 
     @authz('System Admin')
-    async def get_sensors_logs(self, *sensors_ids):
+    async def get_sensors_logs(self, *sensors_ids) -> bytes:
         '''Retrieves logs from one or more sensors.
         '''
         # create batch job
         data = {'sensorsIds': sensors_ids}
         resp = await self.post('sensors/action/fetchLogs', data)
+        batch = resp['batchId']
 
         # retrieve job results
-        return await self.get(f'sensors/action/download-logs/{resp["batchId"]}')
+        while True:
+            await asyncio.sleep(1)
+            log.debug('Waiting for batch job %s', batch)
+            resp = await self.get(f'sensors/action/download-logs/{batch}', raw=True)
+            if resp:
+                # TODO: write to disk
+                return resp
 
     async def get_sensors_overview(self) -> Dict[str, Dict[str, Any]]:
         return await self.get('sensors/overview')
@@ -292,17 +303,48 @@ class SensorsMixin:
         self,
         pylum_id: str,
         filepath: PathLike,
-        target:   Optional[PathLike]=None,
+        destdir:  Optional[PathLike]=None,
+        extract:  bool=False,
     ) -> Path:
-        if not target:
-            target = Path(filepath).name
+        '''
+        Returns the folder where the archive was downloaded or extracted.
+        '''
+        from io import BytesIO
+
+        destdir = Path('.').resolve() if not destdir else Path(destdir)
+
+        if not destdir.exists():
+            destdir.mkdir(parents=True)
+        elif destdir.is_file():
+            raise NotADirectoryError(destdir)
+
         data = {'path': str(filepath), 'pylumId': pylum_id}
+
         async with self.session.stream('POST', 'file-search/fetch-direct', json=data) as resp:
-            resp.raise_for_status()
+            try:
+                filename = get_filename(resp)
+            except FileNotFoundError:
+                raise FileNotFoundError(filepath) from None
 
-            with open(target) as dest:
-                async for chunk in resp.aiter_bytes():
-                    if chunk:
-                        dest.write(chunk)
+            buffer = BytesIO()
+            async for chunk in resp.aiter_bytes():
+                if chunk:
+                    buffer.write(chunk)
+            buffer.seek(0)
 
-        return target
+        if extract:
+            try:
+                # XXX: ZipFile only supports CRC32 encrypted zip files
+                from pyzipper import AESZipFile
+            except ImportError:
+                raise RuntimeError('Install as `pip install cybereason[zip]` to'
+                                   'allow file extraction.')
+
+            with AESZipFile(buffer, mode='r') as archive:
+                # TODO: add drive to target
+                archive.extractall(path=destdir, pwd=b'cautionhandlewithcare')
+        else:
+            with open(destdir / filename, 'wb') as archive:
+                archive.write(buffer.read())
+
+        return destdir
