@@ -25,16 +25,16 @@ unset = Unset()
 
 def parse_csv(
     text:       str,
-    *, boolean: List[str]=[],
-    optional:   List[str]=[],
+    *, boolean: List[str] = [],
+    optional:   List[str] = [],
 ) -> 'Iterator[Dict[str, Any]]':
     csv = text.splitlines()
 
     for item in DictReader(csv):
         for key in boolean:
-            item[key] = BOOL[item[key]]
+            item[key] = BOOL[item[key]]  # type: ignore
         for key in optional:
-            item[key] = NONE.get(item[key], item[key])
+            item[key] = NONE.get(item[key], item[key])  # type: ignore
         yield item
 
 
@@ -55,7 +55,7 @@ def get_filename(response: Response) -> str:
     '''
     try:
         header = response.headers['content-disposition']
-        return re.search(r'\"(.*?)(?=\"|\Z)', header).group(1)
+        return re.search(r'\"(.*?)(?=\"|\Z)', header).group(1)  # type: ignore
     except (KeyError, AttributeError):
         raise FileNotFoundError from None
 
@@ -80,5 +80,5 @@ def find_next_version(path: Path) -> Path:
             name = item.name.split('.')
             if name[1:-1] and name[1].isdigit():
                 value = max(value, int(name[1]))
-    value +=1
+    value += 1
     return parent / f'{stem}.{value}{suffix}'

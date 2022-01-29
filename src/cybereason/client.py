@@ -1,4 +1,4 @@
-from typing import Optional, Literal, Dict, List, Tuple, Any, AsyncIterator, TYPE_CHECKING
+from typing import Any, Optional, Dict, List, Tuple, Any, AsyncIterator, TYPE_CHECKING, cast
 from json.decoder import JSONDecodeError
 from io import BytesIO, BufferedIOBase
 from functools import cached_property
@@ -14,7 +14,9 @@ httpx._transports.default.httpcore._async.http11.h11._headers.normalize_and_vali
 from httpx import AsyncClient, HTTPStatusError, ConnectError
 
 from .exceptions import (
-    AccessDenied, AuthenticationError, ResourceNotFoundError, ServiceDisabled, UnauthorizedRequest, ServerError, ClientError,
+    AccessDenied, AuthenticationError, ResourceNotFoundError,
+    ServiceDisabled, UnauthorizedRequest,
+    ServerError, ClientError,
     authz, min_version,
 )
 from .utils import parse_csv, find_next_version, get_filename
@@ -23,9 +25,10 @@ from .system import SystemMixin
 from .threats import ThreatIntelligenceMixin
 
 if TYPE_CHECKING:
-    from typing import Callable, Union
+    from typing import Callable, Literal, Union
     from tarfile import TarFile
     from zipfile import ZipFile
+    from ._typing import Query, UrlPath, URL
 
 DEFAULT_TIMEOUT = 10.0
 DEFAULT_PAGE_SIZE = 20
@@ -39,9 +42,9 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         organization: str,
         username:     str,
         password:     str,
-        proxy:        Optional[str]=None,
-        totp_code:    Optional[str]=None,
-        timeout:      float=DEFAULT_TIMEOUT,
+        proxy:        Optional[str] = None,
+        totp_code:    Optional[str] = None,
+        timeout:      float = DEFAULT_TIMEOUT,
     ):
         self.organization = organization
         self.username = username
@@ -65,7 +68,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 
         auth = {'username': self.username, 'password': self.password}
         try:
-            resp = await self.session.post('login.html', data=auth, **options)
+            resp = await self.session.post('login.html', data=auth, **options)  # type: ignore
         except ConnectError as e:
             raise ConnectionError(e) from None
 
@@ -79,13 +82,13 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
                 raise AuthenticationError('TOTP code (2FA) is required')
 
             totp = {'totpCode': self.totp_code, 'submit': 'Login'}
-            resp = await self.session.post('', data=totp, **options)
+            resp = await self.session.post('', data=totp, **options)  # type: ignore
 
             if 'error' in str(resp.url):
                 await self.session.aclose()
                 raise AuthenticationError('Invalid TOTP code')
 
-        self.session.base_url = f'{self.session.base_url}/rest'
+        self.session.base_url = cast('URL', f'{self.session.base_url}/rest')
 
     async def logout(self) -> None:
         try:
@@ -110,11 +113,11 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
     async def _request(
         self,
         method: str,
-        path:   str,
-        data:   Any=None,
-        query:  Any=None,
-        files:  Optional[Dict[str,Any]]=None,
-        raw:    bool=False,
+        path:   'UrlPath',
+        data:   Any = None,
+        query:  'Query' = None,
+        files:  'Query' = None,
+        raw:    bool = False,
     ) -> Any:
         resp = await self.session.request(
             method, path, json=data, params=query, files=files,
@@ -124,7 +127,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
             resp.raise_for_status()
         except HTTPStatusError as e:
             if e.response.status_code == 403:
-                raise UnauthorizedRequest(e.request.url) from None
+                raise UnauthorizedRequest(str(e.request.url)) from None
             elif e.response.status_code == 400:
                 raise ClientError
             elif e.response.status_code == 412:
@@ -145,25 +148,34 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 
     async def get(
         self,
-        path:  str,
-        query: Optional[Dict[str, Any]]=None,
-        raw:   bool=False,
-    ):
+        path:  'UrlPath',
+        query: 'Query' = None,
+        raw:   bool = False,
+    ) -> Any:
         return await self._request('GET', path, query=query, raw=raw)
 
-    async def post(self, path: str, data: Any, files: Optional[Dict[str, Any]]=None):
+    async def post(
+        self,
+        path:  'UrlPath',
+        data:  Any,
+        files: 'Query' = None,
+    ) -> Any:
         return await self._request('POST', path, data=data, files=files)
 
-    async def put(self, path: str, data: Any):
+    async def put(self, path: 'UrlPath', data: Any) -> Any:
         return await self._request('PUT', path, data=data)
 
-    async def delete(self, path: str, query: Optional[Dict[str, Any]]=None):
+    async def delete(
+        self,
+        path:  'UrlPath',
+        query: 'Query' = None,
+    ) -> Any:
         return await self._request('DELETE', path, query=query)
 
     async def raw_download(
         self,
-        path:  str,
-        query: Optional[Dict[str,Any]]=None,
+        path:  'UrlPath',
+        query: 'Query' = None,
     ) -> Tuple[str, BufferedIOBase]:
 
         buffer = BytesIO()
@@ -182,10 +194,10 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 
     async def download(
         self,
-        path:     str,
+        path:     'UrlPath',
         folder:   Path,
-        *, query: Optional[Dict[str, Any]]=None,
-        extract:  bool=False,
+        *, query: 'Query' = None,
+        extract:  bool = False,
     ) -> Path:
         filename, buffer = await self.raw_download(path, query=query)
         unknown = False
@@ -224,11 +236,11 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 
     async def aiter_pages(
         self,
-        path:      str,
+        path:      'UrlPath',
         data:      Any,
         key:       str,
-        page_size: int=DEFAULT_PAGE_SIZE,
-        sort:      str='ASC',
+        page_size: int = DEFAULT_PAGE_SIZE,
+        sort:      'Literal["ASC", "DESC"]' = 'ASC',
     ) -> AsyncIterator[Dict[str, Any]]:
         data = {**data, 'limit': page_size, 'offset': 0, 'sortDirection': sort}
 
@@ -264,7 +276,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
     @min_version(20, 1, 43)
     async def get_malops_labels(
         self,
-        malops_ids: Optional[List[str]]=None,
+        malops_ids: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         '''Returns a list of all Malop labels.
 
@@ -286,7 +298,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 # region REPUTATIONS
     async def get_reputations(
         self,
-        reputation: Optional[str]=None,
+        reputation: Optional[str] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         '''Returns a list of custom reputations for files, IP addresses,
         and domain names.
@@ -330,7 +342,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         direction: str,
         blocking:  bool,
         ip:        str,  # TODO: validate
-        port:      Optional[int]=None,
+        port:      Optional[int] = None,
     ) -> Dict[str, Any]:
         '''
         Args:
@@ -354,10 +366,10 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
     async def update_isolation_rule(
         self,
         id:           str,
-        *, direction: Optional[str]=None,
-        blocking:     Optional[bool]=None,
-        ip:           Optional[str]=None,
-        port:         Optional[int]=None,
+        *, direction: Optional[str] = None,
+        blocking:     Optional[bool] = None,
+        ip:           Optional[str] = None,
+        port:         Optional[int] = None,
     ) -> Dict[str, Any]:
         '''
         Args:
@@ -399,9 +411,9 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         name:        str,
         filepath:    PathLike,
         description: str,
-        run_command: Optional[str]=None,
-        output_dir:  Optional[str]=None,
-        platform:    Optional[Literal['x86', 'x64']]=None,
+        run_command: Optional[str] = None,
+        output_dir:  Optional[str] = None,
+        platform:    Optional['Literal["x86", "x64"]'] = None,
     ) -> None:
         '''Enables you to upload a package for a third-party IR tool to
         your Cybereason platform or upgrade a previously uploaded package,

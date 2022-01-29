@@ -4,9 +4,11 @@ from pathlib import Path
 from os import PathLike
 import hashlib
 
+from ._typing import CybereasonProtocol
 
-class ThreatIntelligenceMixin:
-    async def get_file_reputation(self, path: PathLike, use_sha1: bool=True) -> Any:
+
+class ThreatIntelligenceMixin(CybereasonProtocol):
+    async def get_file_reputation(self, path: PathLike, use_sha1: bool = True) -> Any:
         '''Returns details on a file’s reputation based on the threat
         intelligence service.
 
@@ -34,12 +36,12 @@ class ThreatIntelligenceMixin:
         threat intelligence service.
         '''
         # TODO: multiple ips?
-        ip = ip_address(ip)
+        _ip = ip_address(ip)
         data = {
             'requestData': [{
                 'requestKey': {
                     'ipAddress': str(ip),
-                    'addressType': f'Ipv{ip.version}',
+                    'addressType': f'Ipv{_ip.version}',
                 }
             }]
         }
@@ -102,6 +104,6 @@ class ThreatIntelligenceMixin:
             'const',
         }
         if resource not in RESOURCES:
-            msg = "Invalid resource API: '{}'. Accepted values: {}" 
+            msg = "Invalid resource API: '{}'. Accepted values: {}"
             raise ValueError(msg.format(resource, ', '.join(RESOURCES)))
         return await self.post(f'download_v1/{resource}/service', {})

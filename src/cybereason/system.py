@@ -5,9 +5,10 @@ from os import PathLike
 import asyncio
 
 from .exceptions import ServerError
+from ._typing import CybereasonProtocol
 
 
-class SystemMixin:
+class SystemMixin(CybereasonProtocol):
     @cached_property
     def version(self) -> Tuple[int, int, int]:
         async def func():
@@ -31,7 +32,7 @@ class SystemMixin:
     async def get_users(self) -> List[Dict[str, Any]]:
         return await self.get('users')
 
-    async def get_user(self, username: Optional[str]=None) -> List[Dict[str, Any]]:
+    async def get_user(self, username: Optional[str] = None) -> List[Dict[str, Any]]:
         '''
         Args:
             username: If not specified, returns the client's logged user.
@@ -59,7 +60,7 @@ class SystemMixin:
         resp = await self.get('investigation/configuration')
         return resp['configurationModel']
 
-    async def get_latest_installers(self, server_id: Optional[str]=None) -> List[Dict[str, Any]]:
+    async def get_latest_installers(self, server_id: Optional[str] = None) -> List[Dict[str, Any]]:
         query = {'serverId': server_id or self.server_id}
         resp = await self.get('monitor/global/versions/latest', query=query)
         # denormalize output
@@ -71,7 +72,7 @@ class SystemMixin:
         self,
         system:    str,
         folder:    PathLike,
-        server_id: Optional[str]=None,
+        server_id: Optional[str] = None,
     ) -> Path:
         '''
         Args:
@@ -105,8 +106,8 @@ class SystemMixin:
     async def download_malop_syslog(
         self,
         folder:    PathLike,
-        extract:   bool=False,
-        server_id: Optional[str]=None,
+        extract:   bool = False,
+        server_id: Optional[str] = None,
     ) -> Path:
         return await self.download(
             'monitor/global/server/logs',

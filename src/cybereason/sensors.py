@@ -1,4 +1,4 @@
-from typing import Union, Optional, List, Dict, Any, AsyncIterator
+from typing import Union, Optional, List, Dict, Any, AsyncIterator, TYPE_CHECKING
 from pathlib import Path
 from os import PathLike
 import logging
@@ -10,17 +10,18 @@ from .exceptions import (
     ResourceExistsError, ResourceNotFoundError,
     authz, min_version,
 )
+from ._typing import CybereasonProtocol
 
 log = logging.getLogger(__name__)
 
 
-class SensorsMixin:
+class SensorsMixin(CybereasonProtocol):
     @authz('System Admin')
     async def get_sensors(
         self,
-        *, archived: bool=True,
-        filters:     Optional[List[Any]]=None,
-        page_size:   Optional[int]=None,
+        *, archived: bool = True,
+        filters:     Optional[List[Any]] = None,
+        page_size:   Optional[int] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         '''Returns details on all or a selected group of sensors.
 
@@ -36,7 +37,7 @@ class SensorsMixin:
             })
 
         async for sensor in self.aiter_pages(
-            path='sensors/query',
+            'sensors/query',
             data={'filters': filters},
             key='sensors',
             # page_size=page_size,
@@ -96,9 +97,9 @@ class SensorsMixin:
     async def create_group(
         self,
         *, name:     str,
-        description: Optional[str]=None,
-        rules:       Optional[List[Dict[str, Any]]]=None,
-        policy_id:   Optional[str]=None,
+        description: Optional[str] = None,
+        rules:       Optional[List[Dict[str, Any]]] = None,
+        policy_id:   Optional[str] = None,
     ) -> str:
         '''Creates a sensor group to help organize sensors in your
         environment. Returns the group's ID.
@@ -134,10 +135,10 @@ class SensorsMixin:
     async def edit_group(
         self,
         group_id:    str,
-        name:        Union[Unset, str]=unset,
-        description: Union[Unset, str]=unset,
-        rules:       Union[Unset, List[Dict[str, Any]]]=unset,
-        policy_id:   Union[Unset, str]=unset,
+        name:        Union[Unset, str] = unset,
+        description: Union[Unset, str] = unset,
+        rules:       Union[Unset, List[Dict[str, Any]]] = unset,
+        policy_id:   Union[Unset, str] = unset,
     ):
         '''Edits the details of an existing sensor group.
         '''
@@ -155,7 +156,7 @@ class SensorsMixin:
     async def delete_group(
         self,
         group_id:     str,
-        new_group_id: Optional[str]=None,
+        new_group_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         '''Deletes an existing sensor group.
 
@@ -190,7 +191,7 @@ class SensorsMixin:
     # TODO: you must be assigned to a group to run this request.
     @min_version(20, 1)
     @authz('Sensor Admin L1')
-    async def remove_from_group(self, *sensors_ids, filters: Optional[Any]=None):
+    async def remove_from_group(self, *sensors_ids, filters: Optional[Any] = None):
         '''Removes a sensor from a sensor group, and assigns it to the
         unassigned group.
         '''
@@ -202,8 +203,8 @@ class SensorsMixin:
     # TODO: paginate
     async def get_policies(
         self,
-        show_config: bool=True,
-        filters:     Optional[Dict[str, Any]]=None,
+        show_config: bool = True,
+        filters:     Optional[Dict[str, Any]] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         query = {'filter': filters or dict()}
         resp = await self.get('policies', query=query)
@@ -224,7 +225,7 @@ class SensorsMixin:
                 return policy
         raise ResourceNotFoundError('Default policy not found')
 
-    async def create_policy(self, data, unique_name: bool=False) -> None:
+    async def create_policy(self, data, unique_name: bool = False) -> None:
         if unique_name:
             async for policy in self.get_policies():
                 if policy['metadata']['name'] == data['nameDescription']['name']:
@@ -234,7 +235,7 @@ class SensorsMixin:
     async def delete_policy(
         self,
         policy_id: str,
-        assign_to: Optional[str]=None,
+        assign_to: Optional[str] = None,
     ) -> Dict[str, Any]:
         if assign_to is None:
             default = await self.get_default_policy()
@@ -247,7 +248,7 @@ class SensorsMixin:
     async def set_remote_shell_mode(
         self,
         sensors_ids: Union[str, List[str]],
-        enabled:     bool=False,
+        enabled:     bool = False,
     ) -> Dict[str, Any]:
         data = {
             'argument': 'AC_ENABLED' if enabled else 'AC_DISABLED',
@@ -258,7 +259,7 @@ class SensorsMixin:
     async def set_app_control_mode(
         self,
         sensors_ids: Union[str, List[str]],
-        enabled:     bool=False,
+        enabled:     bool = False,
     ) -> Dict[str, Any]:
         data = {
             'argument': 'ENABLE' if enabled else 'DISABLE',
@@ -267,7 +268,7 @@ class SensorsMixin:
         return await self.post('sensors/action/setPreventionMode', data=data)
 # endregion
 
-    async def open_remote_shell(self, pylum_id: str, restricted: bool=True) -> Dict[str, Optional[str]]:
+    async def open_remote_shell(self, pylum_id: str, restricted: bool = True) -> Dict[str, Optional[str]]:
         '''Opens a remote shell session and returns the data needed to
         establish a websocket connection.
         '''
@@ -303,8 +304,8 @@ class SensorsMixin:
         self,
         pylum_id: str,
         filepath: PathLike,
-        destdir:  Optional[PathLike]=None,
-        extract:  bool=False,
+        destdir:  Optional[PathLike] = None,
+        extract:  bool = False,
     ) -> Path:
         '''
         Returns the folder where the archive was downloaded or extracted.
