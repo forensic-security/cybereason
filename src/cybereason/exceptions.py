@@ -1,9 +1,9 @@
-from typing import Union, Optional, AsyncIterator, Callable, Awaitable
-from inspect import isasyncgenfunction
-from functools import wraps
-from textwrap import dedent
+from typing import TYPE_CHECKING, Optional
 
-AsyncFunc = Union[AsyncIterator, Callable[..., Awaitable[None]]]
+if TYPE_CHECKING:
+    from typing import Union, AsyncIterator, Callable, Awaitable
+
+    AsyncFunc = Union[AsyncIterator, Callable[..., Awaitable[None]]]
 
 
 class CybereasonException(Exception):
@@ -59,13 +59,18 @@ class ConnectionError(CybereasonException):
 
 
 def _add_to_doc(doc: Optional[str], text: str) -> str:
+    from textwrap import dedent
+
     doc = dedent((doc or '').strip())
     return f'{doc}\n\n{dedent(text)}'
 
 
-def authz(role) -> AsyncFunc:
+def authz(role) -> 'AsyncFunc':
     '''Adds context to authorization errors.
     '''
+    from inspect import isasyncgenfunction
+    from functools import wraps
+
     def inner(func):
         doc = f'''\
             Raises:
@@ -95,7 +100,10 @@ def authz(role) -> AsyncFunc:
 
 
 # TODO: exception is always status == 404?
-def min_version(major, minor, release=0) -> AsyncFunc:
+def min_version(major, minor, release=0) -> 'AsyncFunc':
+    from inspect import isasyncgenfunction
+    from functools import wraps
+
     def inner(func):
         version = f'{major}.{minor}.{release or "x"}'
         func.__doc__ = _add_to_doc(func.__doc__, f'.. versionadded:: {version}')

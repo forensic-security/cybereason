@@ -1,7 +1,6 @@
 # patch to cope with a bug in /rest/file-search/fetch-direct that
 #   returns two {'file-encoding': 'chunked'} headers
 import re
-from typing import Type
 
 from h11._abnf import field_name, field_value
 from h11._util import bytesify, LocalProtocolError, validate
@@ -16,6 +15,7 @@ def normalize_and_validate(headers, _parsed: bool=False):
     new_headers = []
     seen_content_length = None
     saw_transfer_encoding = False
+
     for name, value in headers:
         # For headers coming out of the parser, we can safely skip some steps,
         # because it always returns bytes and has already run these regexes
@@ -32,6 +32,7 @@ def normalize_and_validate(headers, _parsed: bool=False):
 
         raw_name = name
         name = name.lower()
+
         if name == b'content-length':
             lengths = {length.strip() for length in value.split(b',')}
             if len(lengths) != 1:
@@ -43,10 +44,10 @@ def normalize_and_validate(headers, _parsed: bool=False):
                 new_headers.append((raw_name, name, value))
             elif seen_content_length != value:
                 raise LocalProtocolError('conflicting Content-Length headers')
+
         elif name == b'transfer-encoding':
             # "A server that receives a request message with a transfer coding
-            # it does not understand SHOULD respond with 501 (Not
-            # Implemented)."
+            # it does not understand SHOULD respond with 501 (Not Implemented)."
             # https://tools.ietf.org/html/rfc7230#section-3.3.1
             if saw_transfer_encoding:
                 if saw_transfer_encoding == value:
@@ -64,6 +65,7 @@ def normalize_and_validate(headers, _parsed: bool=False):
                 )
             saw_transfer_encoding = value
             new_headers.append((raw_name, name, value))
+
         else:
             new_headers.append((raw_name, name, value))
     return Headers(new_headers)
