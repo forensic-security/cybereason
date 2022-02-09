@@ -1,16 +1,21 @@
-from typing import Union, Optional, List, Dict, Any, AsyncIterator, TYPE_CHECKING
+from typing import Optional, List, Dict, Any, AsyncIterator, TYPE_CHECKING
 from pathlib import Path
 from os import PathLike
 import logging
 import asyncio
 
-from .utils import to_list, Unset, unset, get_filename
+from .utils import to_list, unset, get_filename
 from .exceptions import (
     AccessDenied, ServerError, ClientError,
     ResourceExistsError, ResourceNotFoundError,
     authz, min_version,
 )
 from ._typing import CybereasonProtocol
+
+if TYPE_CHECKING:
+    from .utils import Unset
+    from typing import Union
+
 
 log = logging.getLogger(__name__)
 
@@ -135,10 +140,10 @@ class SensorsMixin(CybereasonProtocol):
     async def edit_group(
         self,
         group_id:    str,
-        name:        Union[Unset, str] = unset,
-        description: Union[Unset, str] = unset,
-        rules:       Union[Unset, List[Dict[str, Any]]] = unset,
-        policy_id:   Union[Unset, str] = unset,
+        name:        'Union[Unset, str]' = unset,
+        description: 'Union[Unset, str]' = unset,
+        rules:       'Union[Unset, List[Dict[str, Any]]]' = unset,
+        policy_id:   'Union[Unset, str]' = unset,
     ):
         '''Edits the details of an existing sensor group.
         '''
@@ -245,9 +250,57 @@ class SensorsMixin(CybereasonProtocol):
 # endregion
 
 # region ACTIONS
+    @min_version(18, 0)
+    @authz('System Admin')
+    async def set_sensor_tags(
+        self,
+        pylum_id:       str,
+        department:     'Union[Unset, None, str]' = unset,
+        location:       'Union[Unset, None, str]' = unset,
+        device_type:    'Union[Unset, None, str]' = unset,
+        critical_asset: 'Union[Unset, None, bool]' = unset,
+        custom_tags:    'Union[Unset, None, str]' = unset,
+    ) -> 'Dict[str, Dict[str, Union[str, bool]]]':
+        '''Creates, modifies or delete tags for a specific sensor or
+        group of sensors. To delete a tag set the value to ``None``.
+        '''
+        tags = dict()
+
+        for name, value, typ in (
+            ('department',     department,     str),
+            ('location',       location,       str),
+            ('device type',    device_type,    str),
+            ('critical asset', critical_asset, bool),
+            ('custom tags',    custom_tags,    str),
+        ):
+            if value is not unset:
+                if value is None:
+                    tags[name] = {'operation': 'REMOVE'}
+                elif isinstance(value, typ):
+                    if typ == str and len(value) > 100:
+                        err = f"The maximum length for the '{name}' tag is 100 characters"
+                        raise ValueError(err)
+                    tags[name] = {'operation': 'SET', 'value': value}
+                else:
+                    raise TypeError(f"'{name}' tag must be a '{typ.__name__}'")
+
+        data = {'entities': {pylum_id: {'tags': tags, 'entityType': 'MACHINE'}}}
+        resp = await self.post('tagging/process_tags', data)
+        resp = resp['entities'][pylum_id]['results']
+
+        err = dict()
+        for tag, result in resp.items():
+            if not result['success']:
+                # ignore unsuccessful deletions of missing tags
+                if not(result['operation'] == 'REMOVE' and result['oldValue'] == ''):
+                    err[tag] = result
+        if err:
+            raise ClientError(err)
+        return resp
+
     async def set_remote_shell_mode(
         self,
-        sensors_ids: Union[str, List[str]],
+        sensors_ids: 'Union[str, List[str]]',
         enabled:     bool = False,
     ) -> Dict[str, Any]:
         data = {
@@ -258,7 +311,7 @@ class SensorsMixin(CybereasonProtocol):
 
     async def set_app_control_mode(
         self,
-        sensors_ids: Union[str, List[str]],
+        sensors_ids: 'Union[str, List[str]]',
         enabled:     bool = False,
     ) -> Dict[str, Any]:
         data = {

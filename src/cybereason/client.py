@@ -30,8 +30,8 @@ if TYPE_CHECKING:
     from zipfile import ZipFile
     from ._typing import Query, UrlPath, URL
 
-DEFAULT_TIMEOUT = 10.0
-DEFAULT_PAGE_SIZE = 20
+DEFAULT_TIMEOUT = 30.0
+DEFAULT_PAGE_SIZE = 50
 
 log = logging.getLogger(__name__)
 
@@ -129,11 +129,11 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
             if e.response.status_code == 403:
                 raise UnauthorizedRequest(str(e.request.url)) from None
             elif e.response.status_code == 400:
-                raise ClientError
+                raise ClientError(e.response.text)
             elif e.response.status_code == 412:
                 raise AccessDenied(e.response.text) from None
             elif e.response.status_code == 500:
-                raise ServerError
+                raise ServerError(e.response.text)
             elif e.response.status_code == 302:
                 raise AuthenticationError from None
             raise
@@ -284,6 +284,12 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
             malops_ids: You can add specific Malop GUID identifiers.
         '''
         return await self.post('detection/labels', malops_ids or [])
+
+    # TODO
+    async def get_malware_alerts(self, filters=None) -> AsyncIterator[Any]:
+        data = {'filters': filters or []}
+        async for alert in self.aiter_pages('malware/query', data, key='malwares'):
+            yield alert
 # endregion
 
 # region CUSTOM DETECTION RULES
