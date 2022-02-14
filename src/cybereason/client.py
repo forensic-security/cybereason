@@ -1,4 +1,4 @@
-from typing import Any, Optional, Dict, List, Tuple, Any, AsyncIterator, TYPE_CHECKING, cast
+from typing import Any, Optional, Dict, List, Tuple, Any, TYPE_CHECKING, cast
 from json.decoder import JSONDecodeError
 from io import BytesIO, BufferedIOBase
 from functools import cached_property
@@ -25,7 +25,7 @@ from .system import SystemMixin
 from .threats import ThreatIntelligenceMixin
 
 if TYPE_CHECKING:
-    from typing import Callable, Literal, Union
+    from typing import AsyncIterator, Callable, Literal, Union
     from tarfile import TarFile
     from zipfile import ZipFile
     from ._typing import Query, UrlPath, URL
@@ -241,7 +241,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         key:       str,
         page_size: int = DEFAULT_PAGE_SIZE,
         sort:      'Literal["ASC", "DESC"]' = 'ASC',
-    ) -> AsyncIterator[Dict[str, Any]]:
+    ) -> 'AsyncIterator[Dict[str, Any]]':
         data = {**data, 'limit': page_size, 'offset': 0, 'sortDirection': sort}
 
         while True:
@@ -256,16 +256,22 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
             data['offset'] += 1  # XXX: page number
 
 # region MALOPS
-    async def get_malops(self, days_ago: int=7) -> Any:
+    async def get_malops(self, days_ago: Optional[int]=None) -> Any:
         '''Retrieve all Malops of all types (default: during the last week).
+
+        Args:
+            days_ago: If not set, all entries will be returned.
         '''
         # TODO: allow to specify end date
         now = datetime.utcnow()
-        ago = now - timedelta(days=days_ago)
-        data = {
-            'startTime': int(ago.timestamp() * 1000),
-            'endTime': int(now.timestamp() * 1000),
-        }
+
+        if days_ago is None:
+            start = 0
+        else:
+            ago = now - timedelta(days=days_ago + 1)
+            start = int(ago.timestamp() * 1000)
+
+        data = {'startTime': start, 'endTime': int(now.timestamp() * 1000)}
         return await self.post('detection/inbox', data)
 
     async def get_active_malops(self):
@@ -286,7 +292,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         return await self.post('detection/labels', malops_ids or [])
 
     # TODO
-    async def get_malware_alerts(self, filters=None) -> AsyncIterator[Any]:
+    async def get_malware_alerts(self, filters=None) -> 'AsyncIterator[Any]':
         data = {'filters': filters or []}
         async for alert in self.aiter_pages('malware/query', data, key='malwares'):
             yield alert
@@ -305,7 +311,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
     async def get_reputations(
         self,
         reputation: Optional[str] = None,
-    ) -> AsyncIterator[Dict[str, Any]]:
+    ) -> 'AsyncIterator[Dict[str, Any]]':
         '''Returns a list of custom reputations for files, IP addresses,
         and domain names.
 
@@ -476,3 +482,16 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         # TODO
         resp = await self.get('irtools/credentials')
 # endregion
+
+    async def get_user_audit_logs(self, rotated: bool = True) -> 'AsyncIterator[Dict]':
+        '''The User Audit log (aka Actions log) displays all user
+        activity on the platform.
+        '''
+        from .utils import extract_logfiles
+        from .parse import cefparse
+
+        _, archive = await self.raw_download('monitor/global/userAuditLog')
+        async for content in extract_logfiles(archive, 'userAuditSyslog', rotated):
+            # yield latest logs first
+            for line in content.splitlines()[::-1]:
+                yield cefparse(line.decode())

@@ -2,11 +2,14 @@ from typing import Any, Dict, List, TYPE_CHECKING
 from collections.abc import Iterable, Iterator
 from csv import DictReader
 from pathlib import Path
-from httpx import Response
+from io import BytesIO
 import re
 
+from httpx import Response
+
+
 if TYPE_CHECKING:
-    from typing import Iterator
+    from typing import AsyncIterator, Iterator
 
 
 BOOL = {'true': True, 'false': False}
@@ -58,6 +61,26 @@ def get_filename(response: Response) -> str:
         return re.search(r'\"(.*?)(?=\"|\Z)', header).group(1)  # type: ignore
     except (KeyError, AttributeError):
         raise FileNotFoundError from None
+
+
+async def extract_logfiles(fileobj, logname, rotated: bool = True) -> 'AsyncIterator[bytes]':
+    '''Extracts latest logfile and rotated gzipped logfiles from a
+    zipped logs archive.
+    '''
+    from zipfile import ZipFile
+    from gzip import GzipFile
+
+    logname, *_ = logname.split('.')
+
+    with ZipFile(fileobj) as archive:
+        yield archive.open(f'{logname}.log').read()
+
+        if rotated:
+            for file in sorted(archive.filelist, key=lambda f: f.filename):
+                if file.filename[-3:] == '.gz' and logname in file.filename:
+                    archived = BytesIO(archive.open(file.filename).read())
+                    with GzipFile(fileobj=archived, mode='rb') as f:
+                        yield f.read()
 
 
 def find_next_version(path: Path) -> Path:

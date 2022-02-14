@@ -32,19 +32,20 @@ async def dump_policies_config():
 asyncio.run(dump_policies_config())
 ```
 
-### Download all malop syslogs (via script)
+### Download and parse into JSON all user audit logs (action log)
 ```python
-#!/usr/bin/env python3 -m asyncio
-
-# this shebang is only available since Python 3.8
-# for earlier versions use the traditional approach
-
 from cybereason import Cybereason
+import asyncio
+import json
 
-async with Cybereason(<organization>, <username>, <password>) as client:
-    for server in await client.get_detection_servers():
-        path = await client.download_malop_syslog(server['id'], '.')
-        print(f'{server["serverName"]} malop syslog was saved in {path.absolute()}')
+async def user_audit():
+    async with Cybereason(<organization>, <username>, <password>) as client:
+        # rotated=False to get only the latest logs
+        logs = [log async for log in client.get_user_audit_logs(rotated=True)]
+        with open('user_audit.json', 'w') as f:
+            json.dump(logs, f, indent=4)
+
+asyncio.run(user_audit())
 ```
 
 ---

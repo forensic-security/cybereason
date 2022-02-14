@@ -131,7 +131,7 @@ class SensorsMixin(CybereasonProtocol):
                 await self.get_group_by_name(name)
             except ResourceNotFoundError:
                 raise e
-            raise ResourceExistsError(f'The group "{name}" already exists.')
+            raise ResourceExistsError(f'The group "{name}" already exists.') from None
 
         return resp['groupId']
 
