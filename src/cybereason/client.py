@@ -19,7 +19,7 @@ from .exceptions import (
     ServerError, ClientError,
     authz, min_version,
 )
-from .utils import parse_csv, find_next_version, get_filename
+from .utils import find_next_version, get_filename
 from .sensors import SensorsMixin
 from .system import SystemMixin
 from .threats import ThreatIntelligenceMixin
@@ -60,6 +60,16 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
             headers={'content-type': 'application/json'},
             proxies=self.proxy,
             timeout=self.timeout,
+        )
+
+    @cached_property
+    def session_sage(self) -> AsyncClient:
+        return AsyncClient(
+            base_url=f'https://sage.cybereason.com/rest',
+            headers={'content-type': 'application/json'},
+            cookies=self.session.cookies,
+            timeout=self.timeout,
+            verify=False,
         )
 
     async def login(self) -> None:
@@ -109,6 +119,8 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         if hasattr(self, 'session'):
             await self.logout()
             await self.session.aclose()
+        if hasattr(self, 'session_sage'):
+            await self.session_sage.aclose()
 
     async def _request(
         self,
@@ -232,7 +244,7 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 
             log.info('%s saved as %s', filename, destpath)
 
-        return destpath
+        return destpath.resolve()
 
     async def aiter_pages(
         self,
@@ -255,6 +267,11 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 
             data['offset'] += 1  # XXX: page number
 
+    async def post_sage(self, path, data):
+        resp = await self.session_sage.post(path, json=data)
+        resp.raise_for_status()
+        return resp.json()
+
 # region MALOPS
     async def get_malops(self, days_ago: Optional[int]=None) -> Any:
         '''Retrieve all Malops of all types (default: during the last week).
@@ -274,10 +291,26 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         data = {'startTime': start, 'endTime': int(now.timestamp() * 1000)}
         return await self.post('detection/inbox', data)
 
-    async def get_active_malops(self):
+    async def get_active_malops(self, logon=False):
         '''Get all Malops currently active.
         '''
-        return await self.post('crimes/unified', None)  # TODO
+        data = {
+            'totalResultLimit': 10000,
+            'perGroupLimit': 10000,
+            'perFeatureLimit': 100,
+            'templateContext': 'OVERVIEW',
+        }
+        if logon:
+            data.update({
+                'customFields': [],
+                'queryPath': [{'requestedType': 'MalopLogonSession', 'result': True, 'filters': None}],
+            })
+        else:
+            data.update({
+            'customFields': ['isMitigated'],
+            'queryPath': [{'requestedType': 'MalopProcess', 'result': True, 'filters': None}],
+            })
+        return await self.post('crimes/unified', data)  # TODO
 
     @min_version(20, 1, 43)
     async def get_malops_labels(
@@ -305,35 +338,6 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         resp = await self.get('customRules/decisionFeature/live')
         # TODO: resp['limitExceed']: bool ?
         return resp['rules']
-# endregion
-
-# region REPUTATIONS
-    async def get_reputations(
-        self,
-        reputation: Optional[str] = None,
-    ) -> 'AsyncIterator[Dict[str, Any]]':
-        '''Returns a list of custom reputations for files, IP addresses,
-        and domain names.
-
-        Args:
-            reputation: 'blacklist' or 'whitelist'.
-        '''
-        # TODO: could be reputation filtered in the query?
-        csv = await self.get('classification/download')
-
-        for item in parse_csv(
-            csv,
-            boolean=['prevent execution', 'remove'],
-            optional=['comment'],
-        ):
-            if reputation:
-                if item['reputation'] == reputation:
-                    yield item
-            else:
-                yield item
-
-    async def get_ip_reputations(self):
-        return await self.post('download_v1/ip_reputation', {})
 # endregion
 
 # region ISOLATION RULES
