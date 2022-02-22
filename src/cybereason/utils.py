@@ -1,15 +1,14 @@
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from collections.abc import Iterable, Iterator
 from csv import DictReader
 from pathlib import Path
 from io import BytesIO
 import re
 
-from httpx import Response
-
 
 if TYPE_CHECKING:
-    from typing import AsyncIterator, Iterator
+    from typing import Any, AsyncIterator, Dict, Iterator, List
+    from httpx import Response
 
 
 BOOL = {'true': True, 'false': False}
@@ -28,8 +27,8 @@ unset = Unset()
 
 def parse_csv(
     text:       str,
-    *, boolean: List[str] = [],
-    optional:   List[str] = [],
+    *, boolean: 'List[str]' = [],
+    optional:   'List[str]' = [],
 ) -> 'Iterator[Dict[str, Any]]':
     csv = text.splitlines()
 
@@ -41,7 +40,7 @@ def parse_csv(
         yield item
 
 
-def to_list(obj) -> List[Any]:
+def to_list(obj: 'Any') -> 'List[Any]':
     if isinstance(obj, Iterator):
         return list(obj)
     elif isinstance(obj, Iterable):
@@ -53,7 +52,7 @@ def to_list(obj) -> List[Any]:
 # TODO: complete, but beware of SensorsMixin.download_file:
 #   the lack of the header is used as an indicator of the
 #   "file not found" error
-def get_filename(response: Response) -> str:
+def get_filename(response: 'Response') -> str:
     '''Extract filename from an HTTP response.
     '''
     try:

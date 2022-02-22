@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Any, AsyncIterator, TYPE_CHECKING
+from typing import Optional, Dict, Any, TYPE_CHECKING
 from pathlib import Path
 from os import PathLike
 import logging
@@ -14,7 +14,7 @@ from ._typing import CybereasonProtocol
 
 if TYPE_CHECKING:
     from .utils import Unset
-    from typing import Union
+    from typing import AsyncIterator, List, Union
 
 
 log = logging.getLogger(__name__)
@@ -25,9 +25,9 @@ class SensorsMixin(CybereasonProtocol):
     async def get_sensors(
         self,
         *, archived: bool = True,
-        filters:     Optional[List[Any]] = None,
+        filters:     'Optional[List[Any]]' = None,
         page_size:   Optional[int] = None,
-    ) -> AsyncIterator[Dict[str, Any]]:
+    ) -> 'AsyncIterator[Dict[str, Any]]':
         '''Returns details on all or a selected group of sensors.
 
         Args:
@@ -103,7 +103,7 @@ class SensorsMixin(CybereasonProtocol):
         self,
         *, name:     str,
         description: Optional[str] = None,
-        rules:       Optional[List[Dict[str, Any]]] = None,
+        rules:       'Optional[List[Dict[str, Any]]]' = None,
         policy_id:   Optional[str] = None,
     ) -> str:
         '''Creates a sensor group to help organize sensors in your
@@ -210,7 +210,7 @@ class SensorsMixin(CybereasonProtocol):
         self,
         show_config: bool = True,
         filters:     Optional[Dict[str, Any]] = None,
-    ) -> AsyncIterator[Dict[str, Any]]:
+    ) -> 'AsyncIterator[Dict[str, Any]]':
         query = {'filter': filters or dict()}
         resp = await self.get('policies', query=query)
 

@@ -16,10 +16,11 @@ from httpx import AsyncClient, HTTPStatusError, ConnectError
 from .exceptions import (
     AccessDenied, AuthenticationError, ResourceNotFoundError,
     ServiceDisabled, UnauthorizedRequest,
-    ServerError, ClientError,
+    CybereasonException, ServerError, ClientError,
     authz, min_version,
 )
 from .utils import find_next_version, get_filename
+from .custom_rules import CustomRulesMixin
 from .sensors import SensorsMixin
 from .system import SystemMixin
 from .threats import ThreatIntelligenceMixin
@@ -36,7 +37,7 @@ DEFAULT_PAGE_SIZE = 50
 log = logging.getLogger(__name__)
 
 
-class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
+class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
     def __init__(
         self,
         organization: str,
@@ -141,11 +142,11 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
             if e.response.status_code == 403:
                 raise UnauthorizedRequest(str(e.request.url)) from None
             elif e.response.status_code == 400:
-                raise ClientError(e.response.text)
+                raise ClientError(e.response.text) from None
             elif e.response.status_code == 412:
                 raise AccessDenied(e.response.text) from None
             elif e.response.status_code == 500:
-                raise ServerError(e.response.text)
+                raise ServerError(e.response.text) from None
             elif e.response.status_code == 302:
                 raise AuthenticationError from None
             raise
@@ -248,21 +249,27 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
 
     async def aiter_pages(
         self,
-        path:      'UrlPath',
-        data:      Any,
-        key:       str,
-        page_size: int = DEFAULT_PAGE_SIZE,
-        sort:      'Literal["ASC", "DESC"]' = 'ASC',
+        path:          'UrlPath',
+        data:          Any,
+        key:           str,
+        page_size:     int = DEFAULT_PAGE_SIZE,
+        sort:          'Literal["ASC", "DESC"]' = 'ASC',
     ) -> 'AsyncIterator[Dict[str, Any]]':
         data = {**data, 'limit': page_size, 'offset': 0, 'sortDirection': sort}
 
         while True:
             resp = await self.post(path, data)
+            # XXX: not all results have the same schema
+            items = resp[key] if key in resp else resp['data'][key]
 
-            for item in resp[key]:
+            for item in items:
                 yield item
 
-            if not resp['hasMoreResults']:
+            # XXX: ditto
+            if 'hasMoreResults' in resp:
+                if not resp['hasMoreResults']:
+                    break
+            elif not resp['data']['hasMoreResults']:
                 break
 
             data['offset'] += 1  # XXX: page number
@@ -324,20 +331,10 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
         '''
         return await self.post('detection/labels', malops_ids or [])
 
-    # TODO
     async def get_malware_alerts(self, filters=None) -> 'AsyncIterator[Any]':
-        data = {'filters': filters or []}
+        data = {'filters': filters or [], 'sortingFieldName': 'timestamp'}
         async for alert in self.aiter_pages('malware/query', data, key='malwares'):
             yield alert
-# endregion
-
-# region CUSTOM DETECTION RULES
-    async def get_active_custom_rules(self) -> List[Dict[str, Any]]:
-        '''Retrieve a list of all active custom detection rules.
-        '''
-        resp = await self.get('customRules/decisionFeature/live')
-        # TODO: resp['limitExceed']: bool ?
-        return resp['rules']
 # endregion
 
 # region ISOLATION RULES
@@ -499,3 +496,10 @@ class Cybereason(SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
             # yield latest logs first
             for line in content.splitlines()[::-1]:
                 yield cefparse(line.decode())
+
+    # TODO: https://nest.cybereason.com/documentation/api-documentation/all-versions/how-build-queries
+    async def query(self, data):
+        resp = await self.post('visualsearch/query/simple', data)
+        if resp['status'] == 'FAILURE':
+            raise CybereasonException(resp['message'])
+        return resp['data']
