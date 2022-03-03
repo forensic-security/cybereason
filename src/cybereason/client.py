@@ -40,14 +40,14 @@ log = logging.getLogger(__name__)
 class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
     def __init__(
         self,
-        organization: str,
-        username:     str,
-        password:     str,
-        proxy:        Optional[str] = None,
-        totp_code:    Optional[str] = None,
-        timeout:      float = DEFAULT_TIMEOUT,
+        server:    str,
+        username:  str,
+        password:  str,
+        proxy:     Optional[str] = None,
+        totp_code: Optional[str] = None,
+        timeout:   float = DEFAULT_TIMEOUT,
     ):
-        self.organization = organization
+        self.server = server.split('.')[0]
         self.username = username
         self.password = password
         self.proxy = proxy
@@ -56,12 +56,18 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
 
     @cached_property
     def session(self) -> AsyncClient:
-        return AsyncClient(
-            base_url=f'https://{self.organization}.cybereason.net',
-            headers={'content-type': 'application/json'},
-            proxies=self.proxy,
-            timeout=self.timeout,
-        )
+        try:
+            return AsyncClient(
+                base_url=f'https://{self.server}.cybereason.net',
+                headers={'content-type': 'application/json'},
+                proxies=self.proxy,
+                timeout=self.timeout,
+            )
+        except ImportError:
+            if self.proxy and self.proxy.startswith('socks'):
+                msg = 'Install SOCKS proxy support using `pip install cybereason[socks]`.'
+                raise ImportError(msg) from None
+            raise
 
     @cached_property
     def session_sage(self) -> AsyncClient:
@@ -331,6 +337,8 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
         '''
         return await self.post('detection/labels', malops_ids or [])
 
+    @min_version(17, 5)
+    @authz('Analyst L1')
     async def get_malware_alerts(self, filters=None) -> 'AsyncIterator[Any]':
         data = {'filters': filters or [], 'sortingFieldName': 'timestamp'}
         async for alert in self.aiter_pages('malware/query', data, key='malwares'):
