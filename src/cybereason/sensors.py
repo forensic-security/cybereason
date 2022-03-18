@@ -76,10 +76,24 @@ class SensorsMixin(CybereasonProtocol):
     async def get_sensors_overview(self) -> Dict[str, Dict[str, Any]]:
         return await self.get('sensors/overview')
 
+    @min_version(21, 2, 142)
+    @authz('System Admin')
+    async def delete_sensor(self, sensor_id: str):
+        '''Deletes a sensor or all sensors from the list of sensors.
+        '''
+        data = {'sensorsIds': [sensor_id], 'filters': []}
+        return self.post('sensors/action/delete', data)
+
+    @min_version(21, 2, 145)
+    @authz('System Admin')
+    async def remove_sensor(self, sensor_id: str):
+        data = {'sensorsIds': [sensor_id], 'filters': []}
+        return self.post('sensors/action/purgeSensors', data)
+
 # region GROUPS
     @min_version(20, 1)
     @authz('System Admin')
-    async def get_groups(self):
+    async def get_groups(self) -> 'List[Dict[str, Any]]':
         '''Retrieves a list of sensor groups.
         '''
         return await self.get('groups')
@@ -321,14 +335,18 @@ class SensorsMixin(CybereasonProtocol):
         return await self.post('sensors/action/setPreventionMode', data=data)
 # endregion
 
-    async def open_remote_shell(self, pylum_id: str, restricted: bool = True) -> Dict[str, Optional[str]]:
+    async def open_remote_shell(
+        self,
+        pylum_id:   str,
+        restricted: bool = True,
+    ) -> Dict[str, Optional[str]]:
         '''Opens a remote shell session and returns the data needed to
         establish a websocket connection.
         '''
         data = {
-            'cols': 112,
-            'pylumId': pylum_id,
-            'mode': 'RESTRICTED' if restricted else 'NON_RESTRICTED',
+            'cols':      112,
+            'pylumId':   pylum_id,
+            'mode':      'RESTRICTED' if restricted else 'NON_RESTRICTED',
             'twoFaCode': self.totp_code,
         }
 
@@ -341,9 +359,9 @@ class SensorsMixin(CybereasonProtocol):
         path = '/'.join(('', 'shell', pylum_id, resp['sensorSessionId']))
 
         return {
-            'uri': str(self.session.base_url.copy_with(scheme='wss', path=path)),
-            'cookie': f'JSESSIONID={self.session.cookies.get("JSESSIONID")}',
-            'proxy': self.proxy,
+            'uri':        str(self.session.base_url.copy_with(scheme='wss', path=path)),
+            'cookie':     f'JSESSIONID={self.session.cookies.get("JSESSIONID")}',
+            'proxy':      self.proxy,
             'session_id': resp['sensorSessionId'],
         }
 
