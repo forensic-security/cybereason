@@ -1,4 +1,5 @@
 from pathlib import Path
+import asyncio
 import sys
 
 BASEDIR = Path(__file__).resolve().parents[1] / 'src'
@@ -19,3 +20,11 @@ def get_config_from_env():
             pass
 
     return config
+
+
+def run(fn):
+    async def _run(fn):
+        async with Cybereason(**get_config_from_env()) as client:
+            return await fn(client)
+
+    return asyncio.run(_run(fn))

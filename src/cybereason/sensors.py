@@ -55,13 +55,17 @@ class SensorsMixin(CybereasonProtocol):
         '''
         return await self.get('sensors/allActions')
 
+    # TODO: add timeout
     @authz('System Admin')
     async def get_sensors_logs(self, *sensors_ids) -> bytes:
-        '''Retrieves logs from one or more sensors.
+        '''Returns a compressed archive with the logs from one or more
+        sensors.
         '''
         # create batch job
         data = {'sensorsIds': sensors_ids}
         resp = await self.post('sensors/action/fetchLogs', data)
+        if not resp:
+            raise ResourceNotFoundError
         batch = resp['batchId']
 
         # retrieve job results
@@ -103,14 +107,14 @@ class SensorsMixin(CybereasonProtocol):
         try:
             return [g for g in resp if g['name'] == name][0]
         except IndexError:
-            raise ResourceNotFoundError(f'There is not a group with name: "{name}"') from None
+            raise ResourceNotFoundError(f'There is not a group with name: {name!r}') from None
 
     async def get_group_by_id(self, group_id: str) -> Dict[str, Any]:
         resp = await self.get_groups()
         try:
             return [g for g in resp if g['id'] == group_id][0]
         except IndexError:
-            raise ResourceNotFoundError(f'There is not a group with ID: "{group_id}"') from None
+            raise ResourceNotFoundError(f'There is not a group with ID: {group_id!r}') from None
 
     @authz('System Admin')
     async def create_group(
@@ -145,7 +149,7 @@ class SensorsMixin(CybereasonProtocol):
                 await self.get_group_by_name(name)
             except ResourceNotFoundError:
                 raise e
-            raise ResourceExistsError(f'The group "{name}" already exists.') from None
+            raise ResourceExistsError(f'The group {name!r} already exists.') from None
 
         return resp['groupId']
 
@@ -292,11 +296,11 @@ class SensorsMixin(CybereasonProtocol):
                     tags[name] = {'operation': 'REMOVE'}
                 elif isinstance(value, typ):
                     if typ == str and len(value) > 100:
-                        err = f"The maximum length for the '{name}' tag is 100 characters"
+                        err = f'The maximum length for the {name!r} tag is 100 characters'
                         raise ValueError(err)
                     tags[name] = {'operation': 'SET', 'value': value}
                 else:
-                    raise TypeError(f"'{name}' tag must be a '{typ.__name__}'")
+                    raise TypeError(f'{name!r} tag must be a {typ.__name__!r}')
 
         data = {'entities': {pylum_id: {'tags': tags, 'entityType': 'MACHINE'}}}
         resp = await self.post('tagging/process_tags', data)

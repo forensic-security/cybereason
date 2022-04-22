@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from .exceptions import ResourceNotFoundError
+from .exceptions import ResourceNotFoundError, authz
 from ._typing import CybereasonProtocol
 
 if TYPE_CHECKING:
@@ -27,12 +27,14 @@ class CustomRulesMixin(CybereasonProtocol):
         '''
         return await self.get('customRules/rootCauses')
 
+    @authz('L3 Analyst')
     async def get_malop_detection_types(self) -> 'List[Dict[str, str]]':
         '''Returns a list of all available detection types you can use
         for custom detection rules.
         '''
         return await self.get('customRules/getMalopDetectionTypes')
 
+    @authz('L3 Analyst')
     async def get_malop_activity_types(self) -> 'List[Dict[str, str]]':
         '''Returns a list of all available Malop activity types you can
         use for custom detection rules.

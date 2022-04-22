@@ -1,10 +1,10 @@
-from typing import Any, Optional, Dict, List, Tuple, Any, TYPE_CHECKING, cast
+from typing import Any, Optional, TYPE_CHECKING, cast
 from json.decoder import JSONDecodeError
-from io import BytesIO, BufferedIOBase
 from functools import cached_property
 from datetime import datetime, timedelta
 from pathlib import Path
 from os import PathLike
+from io import BytesIO
 import logging
 
 # monkey-patch to allow multiple {'file-encoding': 'chunked'} headers
@@ -19,14 +19,15 @@ from .exceptions import (
     CybereasonException, ServerError, ClientError,
     authz, min_version,
 )
-from .utils import find_next_version, get_filename
+from .utils import find_next_version, get_filename, to_list
 from .custom_rules import CustomRulesMixin
 from .sensors import SensorsMixin
 from .system import SystemMixin
 from .threats import ThreatIntelligenceMixin
 
 if TYPE_CHECKING:
-    from typing import AsyncIterator, Callable, Literal, Union
+    from typing import AsyncIterator, Callable, Dict, List, Literal, Tuple, Union
+    from io import BufferedIOBase
     from tarfile import TarFile
     from zipfile import ZipFile
     from ._typing import Query, UrlPath, URL
@@ -56,15 +57,20 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
 
     @cached_property
     def session(self) -> AsyncClient:
+        from . import __version__
+
         try:
             return AsyncClient(
                 base_url=f'https://{self.server}.cybereason.net',
-                headers={'content-type': 'application/json'},
+                headers={
+                    'content-type': 'application/json',
+                    'user-agent': f'python-cybereason/{".".join(map(str, __version__))}',
+                },
                 proxies=self.proxy,
                 timeout=self.timeout,
             )
-        except ImportError:
-            if self.proxy and self.proxy.startswith('socks'):
+        except ImportError as e:
+            if 'socks' in str(e).lower():
                 msg = 'Install SOCKS proxy support using `pip install cybereason[socks]`.'
                 raise ImportError(msg) from None
             raise
@@ -120,7 +126,7 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:
         await self.aclose()
         if exc_type:
-            raise exc_type(exc_value)
+            raise exc_type(*to_list(exc_value))
 
     async def aclose(self) -> None:
         if hasattr(self, 'session'):
@@ -131,16 +137,20 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
 
     async def _request(
         self,
-        method: str,
-        path:   'UrlPath',
-        data:   Any = None,
-        query:  'Query' = None,
-        files:  'Query' = None,
-        raw:    bool = False,
+        method:   str,
+        path:     'UrlPath',
+        data:     Any = None,
+        query:    'Query' = None,
+        files:    'Query' = None,
+        raw:      bool = False,
+        raw_data: bool = False,
     ) -> Any:
-        resp = await self.session.request(
-            method, path, json=data, params=query, files=files,
-        )
+        if raw_data:
+            kwargs = dict(data=data, params=query, files=files)
+        else:
+            kwargs = dict(json=data, params=query, files=files)
+
+        resp = await self.session.request(method, path, **kwargs)
 
         try:
             resp.raise_for_status()
@@ -157,12 +167,12 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
                 raise AuthenticationError from None
             raise
 
-        try:
-            return resp.json()
-        except JSONDecodeError:
-            if raw:
-                return resp.content
-            else:
+        if raw:
+            return resp.content
+        else:
+            try:
+                return resp.json()
+            except JSONDecodeError:
                 return resp.content.decode()
 
     async def get(
@@ -175,11 +185,12 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
 
     async def post(
         self,
-        path:  'UrlPath',
-        data:  Any,
-        files: 'Query' = None,
+        path:     'UrlPath',
+        data:     Any,
+        files:    'Query' = None,
+        raw_data: bool = False,
     ) -> Any:
-        return await self._request('POST', path, data=data, files=files)
+        return await self._request('POST', path, data=data, files=files, raw_data=raw_data)
 
     async def put(self, path: 'UrlPath', data: Any) -> Any:
         return await self._request('PUT', path, data=data)
@@ -195,7 +206,7 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
         self,
         path:  'UrlPath',
         query: 'Query' = None,
-    ) -> Tuple[str, BufferedIOBase]:
+    ) -> 'Tuple[str, BufferedIOBase]':
 
         buffer = BytesIO()
         async with self.session.stream('GET', path, params=query) as resp:
@@ -286,7 +297,7 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
         return resp.json()
 
 # region MALOPS
-    async def get_malops(self, days_ago: Optional[int]=None) -> Any:
+    async def get_malops(self, days_ago: Optional[int]=None) -> 'List[Dict[str, Any]]':
         '''Retrieve all Malops of all types (default: during the last week).
 
         Args:
@@ -302,7 +313,7 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
             start = int(ago.timestamp() * 1000)
 
         data = {'startTime': start, 'endTime': int(now.timestamp() * 1000)}
-        return await self.post('detection/inbox', data)
+        return (await self.post('detection/inbox', data))['malops']
 
     async def get_active_malops(self, logon=False):
         '''Get all Malops currently active.
@@ -328,14 +339,22 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
     @min_version(20, 1, 43)
     async def get_malops_labels(
         self,
-        malops_ids: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:
+        malops_ids: 'Optional[List[str]]' = None,
+    ) -> 'List[Dict[str, Any]]':
         '''Returns a list of all Malop labels.
 
         Args:
             malops_ids: You can add specific Malop GUID identifiers.
         '''
         return await self.post('detection/labels', malops_ids or [])
+
+    async def get_malop_comments(self, malop_id) -> 'List[Dict[str, Union[str, int]]]':
+        from html import unescape
+
+        resp = await self.post('crimes/get-comments', malop_id, raw_data=True)
+        for msg in resp:
+            msg['message'] = unescape(msg['message'])
+        return resp
 
     @min_version(17, 5)
     @authz('Analyst L1')
@@ -346,12 +365,12 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
 # endregion
 
 # region ISOLATION RULES
-    async def get_isolation_rules(self) -> List[Dict[str, Any]]:
+    async def get_isolation_rules(self) -> 'List[Dict[str, Any]]':
         '''Retrieve a list of isolation rules.
         '''
         return await self.get('settings/isolation-rule')
 
-    async def get_isolation_rule(self, id) -> Dict[str, Any]:
+    async def get_isolation_rule(self, id) -> 'Dict[str, Any]':
         rules = await self.get_isolation_rules()
         try:
             return [r for r in rules if r['ruleId'] == id][0]
@@ -364,7 +383,7 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
         blocking:  bool,
         ip:        str,  # TODO: validate
         port:      Optional[int] = None,
-    ) -> Dict[str, Any]:
+    ) -> 'Dict[str, Any]':
         '''
         Args:
             direction: The direction of the allowed communication.
@@ -391,7 +410,7 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
         blocking:     Optional[bool] = None,
         ip:           Optional[str] = None,
         port:         Optional[int] = None,
-    ) -> Dict[str, Any]:
+    ) -> 'Dict[str, Any]':
         '''
         Args:
             id: rule ID.
@@ -452,11 +471,11 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
             platform: OS bitness: either ``x64`` or ``x86``.
         '''
         data = {
-            'pacakgeName': name,
-            'packageOSInfoList': {'osTypeGroup': 'WINDOWS_TYPES'},
+            'pacakgeName':         name,
+            'packageOSInfoList':  {'osTypeGroup': 'WINDOWS_TYPES'},
             'packageContentType': 'FILE',
-            'posixPermissions': 'EXECUTE',
-            'description': description,
+            'posixPermissions':   'EXECUTE',
+            'description':        description,
         }
 
         if platform:
@@ -491,6 +510,13 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
         # TODO
         resp = await self.get('irtools/credentials')
 # endregion
+
+    @cached_property
+    def features_map(self) -> 'Dict[str, Dict[str, Any]]':
+        import asyncio
+        async def func():
+            return await self.get('translate/features/all/')
+        return asyncio.run(func())
 
     async def get_user_audit_logs(self, rotated: bool = True) -> 'AsyncIterator[Dict]':
         '''The User Audit log (aka Actions log) displays all user
