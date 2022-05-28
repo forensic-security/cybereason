@@ -4,7 +4,7 @@ from pathlib import Path
 from os import PathLike
 import asyncio
 
-from .exceptions import ServerError
+from .exceptions import ServerError, min_version
 from ._typing import CybereasonProtocol
 
 
@@ -115,3 +115,10 @@ class SystemMixin(CybereasonProtocol):
             query={'serverId': server_id or self.server_id},
             extract=extract,
         )
+
+    @min_version(20, 2, 61)
+    async def get_settings(self):
+        '''Get details on settings updates including Malop notification
+        settings.
+        '''
+        return await self.get('settings/configurations')

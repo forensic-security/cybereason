@@ -70,7 +70,7 @@ class SensorsMixin(CybereasonProtocol):
 
         # retrieve job results
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             log.debug('Waiting for batch job %s', batch)
             resp = await self.get(f'sensors/action/download-logs/{batch}', raw=True)
             if resp:

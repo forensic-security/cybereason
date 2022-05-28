@@ -1,7 +1,6 @@
 from typing import Any, Optional, TYPE_CHECKING, cast
 from json.decoder import JSONDecodeError
 from functools import cached_property
-from datetime import datetime, timedelta
 from pathlib import Path
 from os import PathLike
 from io import BytesIO
@@ -21,6 +20,7 @@ from .exceptions import (
 )
 from .utils import find_next_version, get_filename, to_list
 from .custom_rules import CustomRulesMixin
+from .malops import MalopsMixin
 from .sensors import SensorsMixin
 from .system import SystemMixin
 from .threats import ThreatIntelligenceMixin
@@ -38,7 +38,13 @@ DEFAULT_PAGE_SIZE = 50
 log = logging.getLogger(__name__)
 
 
-class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligenceMixin):
+class Cybereason(
+    CustomRulesMixin,
+    MalopsMixin,
+    SensorsMixin,
+    SystemMixin,
+    ThreatIntelligenceMixin,
+):
     def __init__(
         self,
         server:    str,
@@ -90,6 +96,8 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
         options = {'headers': headers, 'follow_redirects': True}
 
         auth = {'username': self.username, 'password': self.password}
+        log.debug('Logging %r in on %r', self.username, self.server)
+
         try:
             resp = await self.session.post('login.html', data=auth, **options)  # type: ignore
         except ConnectError as e:
@@ -129,10 +137,10 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
             raise exc_type(*to_list(exc_value))
 
     async def aclose(self) -> None:
-        if hasattr(self, 'session'):
+        if 'session' in self.__dict__:
             await self.logout()
             await self.session.aclose()
-        if hasattr(self, 'session_sage'):
+        if 'session_sage' in self.__dict__:
             await self.session_sage.aclose()
 
     async def _request(
@@ -296,74 +304,6 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
         resp.raise_for_status()
         return resp.json()
 
-# region MALOPS
-    async def get_malops(self, days_ago: Optional[int]=None) -> 'List[Dict[str, Any]]':
-        '''Retrieve all Malops of all types (default: during the last week).
-
-        Args:
-            days_ago: If not set, all entries will be returned.
-        '''
-        # TODO: allow to specify end date
-        now = datetime.utcnow()
-
-        if days_ago is None:
-            start = 0
-        else:
-            ago = now - timedelta(days=days_ago + 1)
-            start = int(ago.timestamp() * 1000)
-
-        data = {'startTime': start, 'endTime': int(now.timestamp() * 1000)}
-        return (await self.post('detection/inbox', data))['malops']
-
-    async def get_active_malops(self, logon=False):
-        '''Get all Malops currently active.
-        '''
-        data = {
-            'totalResultLimit': 10000,
-            'perGroupLimit': 10000,
-            'perFeatureLimit': 100,
-            'templateContext': 'OVERVIEW',
-        }
-        if logon:
-            data.update({
-                'customFields': [],
-                'queryPath': [{'requestedType': 'MalopLogonSession', 'result': True, 'filters': None}],
-            })
-        else:
-            data.update({
-            'customFields': ['isMitigated'],
-            'queryPath': [{'requestedType': 'MalopProcess', 'result': True, 'filters': None}],
-            })
-        return await self.post('crimes/unified', data)  # TODO
-
-    @min_version(20, 1, 43)
-    async def get_malops_labels(
-        self,
-        malops_ids: 'Optional[List[str]]' = None,
-    ) -> 'List[Dict[str, Any]]':
-        '''Returns a list of all Malop labels.
-
-        Args:
-            malops_ids: You can add specific Malop GUID identifiers.
-        '''
-        return await self.post('detection/labels', malops_ids or [])
-
-    async def get_malop_comments(self, malop_id) -> 'List[Dict[str, Union[str, int]]]':
-        from html import unescape
-
-        resp = await self.post('crimes/get-comments', malop_id, raw_data=True)
-        for msg in resp:
-            msg['message'] = unescape(msg['message'])
-        return resp
-
-    @min_version(17, 5)
-    @authz('Analyst L1')
-    async def get_malware_alerts(self, filters=None) -> 'AsyncIterator[Any]':
-        data = {'filters': filters or [], 'sortingFieldName': 'timestamp'}
-        async for alert in self.aiter_pages('malware/query', data, key='malwares'):
-            yield alert
-# endregion
-
 # region ISOLATION RULES
     async def get_isolation_rules(self) -> 'List[Dict[str, Any]]':
         '''Retrieve a list of isolation rules.
@@ -395,11 +335,11 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
                 isolated machine, according to the rule.
         '''
         rule = {
-            'ruleId': None,
-            'port': port or '',
+            'ruleId':          None,
+            'port':            port or '',
             'ipAddressString': ip,
-            'blocking': blocking,
-            'direction': direction,
+            'blocking':        blocking,
+            'direction':       direction,
         }
         return await self.post('settings/isolation-rule', rule)
 
@@ -471,7 +411,7 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
             platform: OS bitness: either ``x64`` or ``x86``.
         '''
         data = {
-            'pacakgeName':         name,
+            'pacakgeName':        name,
             'packageOSInfoList':  {'osTypeGroup': 'WINDOWS_TYPES'},
             'packageContentType': 'FILE',
             'posixPermissions':   'EXECUTE',
@@ -499,7 +439,7 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
         files = {'packageInfo': package_info}
 
         try:
-            await self.post('irtools/upload', data=data, files=files)
+            return await self.post('irtools/upload', data=data, files=files)
         except ServiceDisabled:
             raise ServiceDisabled('Packages delivery service is disabled') from None
 
@@ -508,7 +448,7 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
         environment that you can use to access the tool results output.
         '''
         # TODO
-        resp = await self.get('irtools/credentials')
+        return await self.get('irtools/credentials')
 # endregion
 
     @cached_property
@@ -532,7 +472,7 @@ class Cybereason(CustomRulesMixin, SystemMixin, SensorsMixin, ThreatIntelligence
                 yield cefparse(line.decode())
 
     # TODO: https://nest.cybereason.com/documentation/api-documentation/all-versions/how-build-queries
-    async def query(self, data):
+    async def query(self, data) -> 'Dict[str, Any]':
         resp = await self.post('visualsearch/query/simple', data)
         if resp['status'] == 'FAILURE':
             raise CybereasonException(resp['message'])
