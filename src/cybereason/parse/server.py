@@ -21,6 +21,7 @@ LV = r'(DEBUG|INFO|WARN|ERROR)'
 
 class ServerLogParser:
     logs = {
+        'error':  {'parser': 'log2', 'rotation': 'seq'},
         'server': {'parser': 'log2', 'rotation': 'seq'},
     }
 
@@ -62,21 +63,15 @@ class ServerLogParser:
     def _get_rotated(self, logname) -> 'List[Path]':
         '''Returns the rotated logs in order.
         '''
-        try:
-            rotation = self.logs[logname]['rotation']
-        except KeyError:
-            raise NotImplementedError(f'rotation for {logname!r}')
-
-        archives = list(self.folder.glob(f'{logname}[-.]*.log.gz'))
+        rotation = self.logs[logname].get('rotation')
+        archives = sorted(list(self.folder.glob(f'{logname}[-.]*.log.gz')))
 
         if rotation == 'seq':
             ptrn = re.compile(r'(\d+)').search
             sort = lambda x: int(ptrn(x.stem).group(0))
-        elif rotation == 'date':
-            ptrn = re.compile(r'(\d{4}-\d{2}-\d{2})').search
-            sort = lambda x: ptrn(x.stem).group(0)
+            archives = sorted(archives, key=sort)
 
-        return sorted(archives, key=sort)
+        return reversed(archives)
 
     @staticmethod
     def log_datetime(dt):
