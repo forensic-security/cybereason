@@ -45,7 +45,8 @@ def cefparse(string, strict=False):
         values['Severity'] = int(spl[6])
 
     # ignore syslog prefix
-    if (cef_start := spl[0].find('CEF')) == -1:
+    cef_start = spl[0].find('CEF')
+    if cef_start == -1:
         log.warning('Error parsing log: %s', string)
         return None
     _, values['CEFVersion'] = spl[0][cef_start:].split(':')

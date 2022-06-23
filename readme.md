@@ -1,6 +1,9 @@
 # Cybereason
 
-> Async Cybereason API client
+> Async Cybereason API client  
+>
+> ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/cybereason)
+
 
 
 ## Installation

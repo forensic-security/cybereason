@@ -117,18 +117,20 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
         '''
         return await self.post_sage('download_v1/const', {})
 
-    # XXX: deprecated
     async def get_ip_reputations(self):
         '''Returns a list of all IP address reputations used by the
         threat intelligence service.
         '''
+        from warnings import warn
+        warn("'get_ip_reputations' is deprecated", DeprecationWarning)
         return await self.post_sage('download_v1/ip_reputation', {})
 
-    # XXX: deprecated
     async def get_domain_reputations(self):
         '''Returns a list of all domain reputations used by the threat
         intelligence service.
         '''
+        from warnings import warn
+        warn("'get_domain_reputations' is deprecated", DeprecationWarning)
         return await self.post_sage('download_v1/domain_reputation', {})
 
     async def get_reputations(
