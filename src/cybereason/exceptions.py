@@ -11,7 +11,7 @@ class CybereasonException(Exception):
 
 
 class UnauthorizedRequest(CybereasonException):
-    def __init__(self, url: str, role: Optional[str] = None):
+    def __init__(self, url: str, role: Optional[str] = None) -> None:
         if role:
             msg = f'You must have the {role} role'
         else:
@@ -100,7 +100,7 @@ def authz(role) -> 'AsyncFunc':
 
 
 # TODO: exception is always status == 404?
-def min_version(major, minor, release=0) -> 'AsyncFunc':
+def min_version(major: int, minor: int, release: int = 0) -> 'AsyncFunc':
     from inspect import isasyncgenfunction
     from functools import wraps
 

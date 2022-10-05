@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, TYPE_CHECKING
+from typing import Optional, Any, TYPE_CHECKING
 from pathlib import Path
 from os import PathLike
 import logging
@@ -14,7 +14,7 @@ from ._typing import CybereasonProtocol
 
 if TYPE_CHECKING:
     from .utils import Unset
-    from typing import AsyncIterator, List, Union
+    from typing import AsyncIterator, Dict, List, Union
 
 
 log = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ class SensorsMixin(CybereasonProtocol):
                 # TODO: write to disk
                 return resp
 
-    async def get_sensors_overview(self) -> Dict[str, Dict[str, Any]]:
+    async def get_sensors_overview(self) -> 'Dict[str, Dict[str, Any]]':
         return await self.get('sensors/overview')
 
     @min_version(21, 2, 142)
@@ -102,14 +102,14 @@ class SensorsMixin(CybereasonProtocol):
         '''
         return await self.get('groups')
 
-    async def get_group_by_name(self, name: str) -> Dict[str, Any]:
+    async def get_group_by_name(self, name: str) -> 'Dict[str, Any]':
         resp = await self.get_groups()
         try:
             return [g for g in resp if g['name'] == name][0]
         except IndexError:
             raise ResourceNotFoundError(f'There is not a group with name: {name!r}') from None
 
-    async def get_group_by_id(self, group_id: str) -> Dict[str, Any]:
+    async def get_group_by_id(self, group_id: str) -> 'Dict[str, Any]':
         resp = await self.get_groups()
         try:
             return [g for g in resp if g['id'] == group_id][0]
@@ -180,7 +180,7 @@ class SensorsMixin(CybereasonProtocol):
         self,
         group_id:     str,
         new_group_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> 'Dict[str, Any]':
         '''Deletes an existing sensor group.
 
         Args:
@@ -227,7 +227,7 @@ class SensorsMixin(CybereasonProtocol):
     async def get_policies(
         self,
         show_config: bool = True,
-        filters:     Optional[Dict[str, Any]] = None,
+        filters:     'Optional[Dict[str, Any]]' = None,
     ) -> 'AsyncIterator[Dict[str, Any]]':
         query = {'filter': filters or dict()}
         resp = await self.get('policies', query=query)
@@ -239,10 +239,10 @@ class SensorsMixin(CybereasonProtocol):
             for policy in resp['policies']:
                 yield policy
 
-    async def get_policy(self, policy_id: str) -> Dict[str, Any]:
+    async def get_policy(self, policy_id: str) -> 'Dict[str, Any]':
         return await self.get(f'policies/{policy_id}')
 
-    async def get_default_policy(self) -> Dict[str, Any]:
+    async def get_default_policy(self) -> 'Dict[str, Any]':
         async for policy in self.get_policies():
             if policy['metadata']['isDefault']:
                 return policy
@@ -259,7 +259,7 @@ class SensorsMixin(CybereasonProtocol):
         self,
         policy_id: str,
         assign_to: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> 'Dict[str, Any]':
         if assign_to is None:
             default = await self.get_default_policy()
             assign_to = default['metadata']['id']
@@ -282,7 +282,7 @@ class SensorsMixin(CybereasonProtocol):
         '''Creates, modifies or delete tags for a specific sensor or
         group of sensors. To delete a tag set the value to ``None``.
         '''
-        tags = dict()
+        tags: 'Dict[str, Union[str, bool]]' = dict()
 
         for name, value, typ in (
             ('department',     department,     str),
@@ -320,7 +320,7 @@ class SensorsMixin(CybereasonProtocol):
         self,
         sensors_ids: 'Union[str, List[str]]',
         enabled:     bool = False,
-    ) -> Dict[str, Any]:
+    ) -> 'Dict[str, Any]':
         data = {
             'argument': 'AC_ENABLED' if enabled else 'AC_DISABLED',
             'sensorsIds': to_list(sensors_ids),
@@ -331,7 +331,7 @@ class SensorsMixin(CybereasonProtocol):
         self,
         sensors_ids: 'Union[str, List[str]]',
         enabled:     bool = False,
-    ) -> Dict[str, Any]:
+    ) -> 'Dict[str, Any]':
         data = {
             'argument': 'ENABLE' if enabled else 'DISABLE',
             'sensorsIds': to_list(sensors_ids),
@@ -343,7 +343,7 @@ class SensorsMixin(CybereasonProtocol):
         self,
         pylum_id:   str,
         restricted: bool = True,
-    ) -> Dict[str, Optional[str]]:
+    ) -> 'Dict[str, Optional[str]]':
         '''Opens a remote shell session and returns the data needed to
         establish a websocket connection.
         '''

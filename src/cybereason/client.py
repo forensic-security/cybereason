@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from io import BufferedIOBase
     from tarfile import TarFile
     from zipfile import ZipFile
+    from os import PathLike
     from ._typing import Query, UrlPath, URL
 
 DEFAULT_TIMEOUT = 30.0
@@ -65,21 +66,36 @@ class Cybereason(
     def session(self) -> AsyncClient:
         from . import __version__
 
-        try:
+        base_url = f'https://{self.server}.cybereason.net'
+        headers  = {
+            'content-type': 'application/json',
+            'user-agent': f'python-cybereason/{".".join(map(str, __version__))}',
+        }
+
+        if self.proxy and self.proxy.startswith('socks'):
+            # https://github.com/encode/httpx/discussions/2305
+            # TODO: go back to socksio when ^ it's resolved
+            # see: commit f439393
+            try:
+                from httpx_socks import AsyncProxyTransport
+            except ImportError as e:
+                msg = 'Install SOCKS proxy support using `pip install cybereason[socks]`.'
+                raise ImportError(msg) from None
+
             return AsyncClient(
-                base_url=f'https://{self.server}.cybereason.net',
-                headers={
-                    'content-type': 'application/json',
-                    'user-agent': f'python-cybereason/{".".join(map(str, __version__))}',
-                },
+                base_url=base_url,
+                headers=headers,
+                transport=AsyncProxyTransport.from_url(self.proxy),
+                timeout=self.timeout,
+            )
+
+        else:
+            return AsyncClient(
+                base_url=base_url,
+                headers=headers,
                 proxies=self.proxy,
                 timeout=self.timeout,
             )
-        except ImportError as e:
-            if 'socks' in str(e).lower():
-                msg = 'Install SOCKS proxy support using `pip install cybereason[socks]`.'
-                raise ImportError(msg) from None
-            raise
 
     @cached_property
     def session_sage(self) -> AsyncClient:
@@ -233,7 +249,7 @@ class Cybereason(
     async def download(
         self,
         path:     'UrlPath',
-        folder:   Path,
+        folder:   'PathLike',
         *, query: 'Query' = None,
         extract:  bool = False,
     ) -> Path:
