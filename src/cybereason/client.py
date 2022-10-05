@@ -472,7 +472,13 @@ class Cybereason(
                 yield cefparse(line.decode())
 
     # TODO: https://nest.cybereason.com/documentation/api-documentation/all-versions/how-build-queries
-    async def query(self, data) -> 'Dict[str, Any]':
+    async def query(self, data: 'Dict[str, Any]') -> 'Dict[str, Any]':
+        # default since version 20.1.381
+        data.setdefault('perGroupLimit', 100)
+        if data['perGroupLimit'] > 1000:
+            data['perGroupLimit'] = 1000
+
+        # log.debug('Running query %s', data)
         resp = await self.post('visualsearch/query/simple', data)
         if resp['status'] == 'FAILURE':
             raise CybereasonException(resp['message'])

@@ -64,14 +64,14 @@ class ServerLogParser:
         '''Returns the rotated logs in order.
         '''
         rotation = self.logs[logname].get('rotation')
-        archives = sorted(list(self.folder.glob(f'{logname}[-.]*.log.gz')))
+        archives = sorted(list(self.folder.glob(f'{logname}[-.]*.log.gz')), reverse=True)
 
         if rotation == 'seq':
             ptrn = re.compile(r'(\d+)').search
             sort = lambda x: int(ptrn(x.stem).group(0))
-            archives = sorted(archives, key=sort)
+            archives = sorted(archives, key=sort, reverse=True)
 
-        return reversed(archives)
+        return archives
 
     @staticmethod
     def log_datetime(dt):
