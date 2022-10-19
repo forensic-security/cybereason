@@ -24,7 +24,7 @@ class SystemMixin(CybereasonProtocol):
             if len(servers) == 1:
                 return servers[0]
             elif not servers:
-                raise ServerError('No detection server have been found.')
+                raise ServerError('No detection server has been found.')
             else:
                 raise ValueError(f'Please specify one serverId: {", ".join(servers)}')
         return asyncio.run(func())

@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, AsyncIterator, Dict, Literal, Optional, Protocol, Union
+    from typing import Any, AsyncIterator, Dict, Literal, NewType, Optional, Protocol, Union
     from pathlib import Path
     from os import PathLike
     from httpx import AsyncClient, URL
@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     Query = Optional[Dict[str, Any]]
     UrlPath = Union[URL, str]
 
+    MalopId = NewType('MalopId', str)
+    SensorId = NewType('SensorId', str)
 
     class CybereasonProtocol(Protocol):
         proxy:     Optional[str]

@@ -13,8 +13,9 @@ from .exceptions import (
 from ._typing import CybereasonProtocol
 
 if TYPE_CHECKING:
-    from .utils import Unset
     from typing import AsyncIterator, Dict, List, Union
+    from ._typing import SensorId
+    from .utils import Unset
 
 
 log = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ class SensorsMixin(CybereasonProtocol):
             yield sensor
 
     @authz('System Admin')
-    async def get_sensors_actions(self):
+    async def get_sensors_actions(self) -> 'Any':
         '''Returns a list of all the current or queued actions on sensors.
         '''
         return await self.get('sensors/allActions')
@@ -82,7 +83,7 @@ class SensorsMixin(CybereasonProtocol):
 
     @min_version(21, 2, 142)
     @authz('System Admin')
-    async def delete_sensor(self, sensor_id: str):
+    async def delete_sensor(self, sensor_id: 'SensorId') -> 'Any':
         '''Deletes a sensor or all sensors from the list of sensors.
         '''
         data = {'sensorsIds': [sensor_id], 'filters': []}
@@ -90,7 +91,7 @@ class SensorsMixin(CybereasonProtocol):
 
     @min_version(21, 2, 145)
     @authz('System Admin')
-    async def remove_sensor(self, sensor_id: str):
+    async def remove_sensor(self, sensor_id: 'SensorId') -> 'Any':
         data = {'sensorsIds': [sensor_id], 'filters': []}
         return self.post('sensors/action/purgeSensors', data)
 
@@ -162,7 +163,7 @@ class SensorsMixin(CybereasonProtocol):
         description: 'Union[Unset, str]' = unset,
         rules:       'Union[Unset, List[Dict[str, Any]]]' = unset,
         policy_id:   'Union[Unset, str]' = unset,
-    ):
+    ) -> 'Any':
         '''Edits the details of an existing sensor group.
         '''
         group = await self.get_group_by_id(group_id)
@@ -201,7 +202,11 @@ class SensorsMixin(CybereasonProtocol):
 
     @min_version(20, 1)
     @authz('Sensor Admin L1 or System Admin')
-    async def add_to_group(self, group_id, sensors_ids):
+    async def add_to_group(
+        self,
+        group_id:    str,
+        sensors_ids: 'Union[SensorId, List[SensorId]]',
+    ) -> 'Any':
         '''Adds the selected sensor(s) to a sensor group to help organize
         sensors in your environment.
         '''
@@ -214,7 +219,7 @@ class SensorsMixin(CybereasonProtocol):
     # TODO: you must be assigned to a group to run this request.
     @min_version(20, 1)
     @authz('Sensor Admin L1')
-    async def remove_from_group(self, *sensors_ids, filters: Optional[Any] = None):
+    async def remove_from_group(self, *sensors_ids, filters: Optional[Any] = None) -> 'Any':
         '''Removes a sensor from a sensor group, and assigns it to the
         unassigned group.
         '''
@@ -318,7 +323,7 @@ class SensorsMixin(CybereasonProtocol):
 
     async def set_remote_shell_mode(
         self,
-        sensors_ids: 'Union[str, List[str]]',
+        sensors_ids: 'Union[str, List[SensorId]]',
         enabled:     bool = False,
     ) -> 'Dict[str, Any]':
         data = {
@@ -329,7 +334,7 @@ class SensorsMixin(CybereasonProtocol):
 
     async def set_app_control_mode(
         self,
-        sensors_ids: 'Union[str, List[str]]',
+        sensors_ids: 'Union[str, List[SensorId]]',
         enabled:     bool = False,
     ) -> 'Dict[str, Any]':
         data = {
