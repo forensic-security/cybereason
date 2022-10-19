@@ -15,8 +15,8 @@ pip install cybereason
 Install _cybereason_ using:
 - `pip install cybereason[zip]` to enable on-the-fly extraction of files
 downloaded from sensors,
-- `pip install cybereason[socks]` to enable SOCKS proxy support,
-- or `pip install cybereason[zip,socks]` to enable both features.
+- `pip install cybereason[socks]` to enable SOCKS proxy support, or
+- `pip install cybereason[zip,socks]` to enable both features.
 
 ## Examples
 

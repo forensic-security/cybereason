@@ -20,18 +20,21 @@ logger = logging.getLogger(__name__)
 def config():
     import os, inspect
     config = dict()
+    required = list()
 
-    for param in inspect.signature(Cybereason).parameters:
+    for name, param in inspect.signature(Cybereason)._parameters.items():
+        if param.default is param.empty:
+            required.append(name)
         try:
-            config[param] = os.environ[f'cybereason_{param}'.upper()]
+            config[name] = os.environ[f'cybereason_{name}'.upper()]
         except KeyError as e:
             pass
 
-    if not all(x in config for x in ('server', 'username', 'password')):
+    if not all(x in config for x in required):
+        r = ', '.join(f"'CYBEREASON_{p.upper()}'" for p in required)
         raise RuntimeError(
-            'You need to set at least CYBEREASON_SERVER, '
-            'CYBEREASON USERNAME, and CYBEREASON PASSWORD '
-            'environment variables to run the tests.'
+            'You need to set at least the following environment variables '
+            f'to run the tests: {r}'
         )
 
     return config

@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime, date, timezone
+from time import time
 from typing import TYPE_CHECKING
 import logging
 
@@ -15,23 +16,26 @@ log = logging.getLogger(__name__)
 
 
 class MalopsMixin(CybereasonProtocol):
-    async def get_malops(self, days_ago: 'Optional[int]'=None) -> 'List[Dict[str, Any]]':
-        '''Retrieve all malops of all types.
-
-        Args:
-            days_ago: Sets the oldest malops to retrieve. If not set,
-                all malops will be returned.
+    async def get_malops(
+        self, start: 'Union[datetime, date]', end: 'Union[datetime, date]'
+    ) -> 'List[Dict[str, Any]]':
+        '''Retrieve all malops of all types between the given dates.
         '''
-        # TODO: allow to specify end date
-        now = datetime.utcnow()
+        if isinstance(start, date):
+            start = datetime.combine(start, datetime.min.time())
+        if isinstance(end, date):
+            end = datetime.combine(end, datetime.max.time())
 
-        if days_ago is None:
-            start = 0
-        else:
-            ago = now - timedelta(days=days_ago + 1)
-            start = int(ago.timestamp() * 1000)
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
 
-        data = {'startTime': start, 'endTime': int(now.timestamp() * 1000)}
+        data = {
+            'startTime': int(start.timestamp() * 1000),
+            'endTime': int(end.timestamp() * 1000),
+        }
+
         return (await self.post('detection/inbox', data))['malops']
 
     async def get_active_malops(self, logon: bool=False) -> 'AsyncIterator[Dict[str, Any]]':
@@ -40,11 +44,11 @@ class MalopsMixin(CybereasonProtocol):
 
         data = {
             'totalResultLimit': 10000,
-            'perGroupLimit': 10000,
-            'perFeatureLimit': 100,
-            'templateContext': 'OVERVIEW',
-            'customFields': [],
-            'queryPath': [{'result': True, 'filters': None}],
+            'perGroupLimit':    10000,
+            'perFeatureLimit':  100,
+            'templateContext':  'OVERVIEW',
+            'customFields':     [],
+            'queryPath':        [{'result': True, 'filters': None}],
         }
 
         for req_type in ('MalopProcess', 'MalopLogonSession'):
@@ -78,7 +82,10 @@ class MalopsMixin(CybereasonProtocol):
         async for alert in self.aiter_pages('malware/query', data, key='malwares'):
             yield alert
 
-    async def get_malop_comments(self, malop_id: 'MalopId') -> 'List[Dict[str, Union[str, int]]]':
+    async def get_malop_comments(
+        self,
+        malop_id: 'MalopId',
+    ) -> 'List[Dict[str, Union[str, int]]]':
         from html import unescape
 
         resp = await self.post('crimes/get-comments', malop_id, raw_data=True)
@@ -100,19 +107,19 @@ class MalopsMixin(CybereasonProtocol):
         return await self.post('detection/labels', malops_ids or [])
 
     @min_version(20, 1, 43)
-    async def add_malop_label(self, label: str) -> 'Label':
+    async def add_malops_label(self, label: str) -> 'Label':
         '''Add a new malop label to the list of labels available for use
         to add to malops.
         '''
         return await self.post('detection/add-label', {'labelText': label})
 
     @min_version(20, 1, 43)
-    async def update_malop_labels(
+    async def update_malops_labels(
         self,
         malops_ids:     'List[MalopId]',
         added_labels:   'List[int]',
         removed_labels: 'List[int]',
-    ) -> 'Any':
+    ) -> bool:
         '''Updates an existing malop label from the list of labels
         available for use to add to malops.
         '''
@@ -121,10 +128,11 @@ class MalopsMixin(CybereasonProtocol):
             'addedLabels':   added_labels,
             'removedLabels': removed_labels,
         }
-        return await self.post('detection/update-labels', data)
+        resp = await self.post('detection/update-labels', data)
+        return resp == 'success'
 
     @min_version(20, 1, 43)
-    async def delete_malop_label(self, label_id: int) -> bool:
+    async def delete_malops_label(self, label_id: int) -> bool:
         '''Deletes an existing malop label from the list of labels
         available for use to add to malops.
         '''
