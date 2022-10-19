@@ -11,6 +11,7 @@ extension_re = re.compile(r'([^=\s]+)=((?:[\\]=|[^=])+)(?:\s|$)')
 
 
 # https://nest.cybereason.com/documentation/product-documentation/212/syslog-messages
+# https://nest.cybereason.com/documentation/product-documentation/221/syslog-extension-fields
 def cefparse(string, strict=False):
     '''Parse a string in CEF format and return a dict with the headers
     and the extension data.
