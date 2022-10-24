@@ -39,7 +39,7 @@ class MalopsMixin(CybereasonProtocol):
         return (await self.post('detection/inbox', data))['malops']
 
     async def get_active_malops(self, logon: bool=False) -> 'AsyncIterator[Dict[str, Any]]':
-        '''Get all Malops currently active.
+        '''Get all malops currently active.
         '''
 
         data = {
@@ -83,8 +83,7 @@ class MalopsMixin(CybereasonProtocol):
             yield alert
 
     async def get_malop_comments(
-        self,
-        malop_id: 'MalopId',
+        self, malop_id: 'MalopId',
     ) -> 'List[Dict[str, Union[str, int]]]':
         from html import unescape
 
@@ -96,8 +95,7 @@ class MalopsMixin(CybereasonProtocol):
 # region LABELS
     @min_version(20, 1, 43)
     async def get_malops_labels(
-        self,
-        malops_ids: 'Optional[List[MalopId]]' = None,
+        self, malops_ids: 'Optional[List[MalopId]]' = None
     ) -> 'List[Label]':
         '''Returns a list of all Malop labels.
 

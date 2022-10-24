@@ -95,6 +95,16 @@ class SensorsMixin(CybereasonProtocol):
         data = {'sensorsIds': [sensor_id], 'filters': []}
         return self.post('sensors/action/purgeSensors', data)
 
+    @min_version(21, 2, 145)
+    @authz('System Admin')
+    async def purge_sensor(self, sensor_id: 'SensorId') -> 'Any':
+        raise NotImplementedError
+
+    @min_version(21, 2, 145)
+    @authz('System Admin')
+    async def unpurge_sensor(self, sensor_id: 'SensorId') -> 'Any':
+        raise NotImplementedError
+
 # region GROUPS
     @min_version(20, 1)
     @authz('System Admin')
@@ -273,6 +283,9 @@ class SensorsMixin(CybereasonProtocol):
 # endregion
 
 # region ACTIONS
+    async def restart_sensor(self, **kwargs):
+        raise NotImplementedError
+
     @min_version(18, 0)
     @authz('System Admin')
     async def set_sensor_tags(
@@ -342,6 +355,28 @@ class SensorsMixin(CybereasonProtocol):
             'sensorsIds': to_list(sensors_ids),
         }
         return await self.post('sensors/action/setPreventionMode', data=data)
+
+    @authz('System Admin')
+    async def start_collection(
+        self,
+        sensors_ids: 'Optional[List[SensorId]]' = None,
+        filters:     'Optional[List[Any]]' = None,
+    ) -> 'Any':
+        '''Begins collecting data for all sensors or a group of filtered
+        sensors.
+        '''
+        raise NotImplementedError
+
+    @authz('System Admin')
+    async def stop_collection(
+        self,
+        sensors_ids: 'Optional[List[SensorId]]' = None,
+        filters:     'Optional[List[Any]]' = None,
+    ) -> 'Any':
+        '''Stops collecting data for all sensors or a group of filtered
+        sensors.
+        '''
+        raise NotImplementedError
 # endregion
 
     async def open_remote_shell(

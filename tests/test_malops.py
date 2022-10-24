@@ -9,10 +9,10 @@ LABEL = 'TEST_LABEL'
 async def label_test(client):
     '''Also tests creation and deleting of labels.
     '''
-    label = await client.add_malop_label(LABEL)
+    label = await client.add_malops_label(LABEL)
     assert label['labelText'] == LABEL
     yield label
-    resp = await client.delete_malop_label(label['id'])
+    resp = await client.delete_malops_label(label['id'])
     assert resp is True
 
 

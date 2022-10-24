@@ -24,7 +24,7 @@ from .incident_reponse import IncidentResponseMixin
 from .malops import MalopsMixin
 from .sensors import SensorsMixin
 from .system import SystemMixin
-from .threats import ThreatIntelligenceMixin
+from .threat_intel import ThreatIntelligenceMixin
 
 if TYPE_CHECKING:
     from typing import AsyncIterator, Callable, Dict, List, Literal, Tuple, Union
@@ -160,6 +160,22 @@ class Cybereason(
             await self.session.aclose()
         if 'session_sage' in self.__dict__:
             await self.session_sage.aclose()
+
+    async def gather_limit(num, *tasks):
+        '''Limits concurrency.
+
+        Args:
+            num: max of simultaneous tasks.
+        '''
+        import asyncio
+
+        semaphore = asyncio.Semaphore(num)
+
+        async def run_task(task):
+            async with semaphore:
+                return await task
+
+        return await asyncio.gather(*(run_task(task) for task in tasks))
 
     async def _request(
         self,

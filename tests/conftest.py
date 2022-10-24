@@ -7,7 +7,9 @@ import pytest
 import pytest_asyncio
 
 
-BASEDIR = Path(__file__).resolve().parents[1] / 'src'
+HERE = Path(__file__).resolve().parent
+BASEDIR = HERE.parent / 'src'
+SCHEMAS = HERE / 'schemas'
 sys.path.insert(0, str(BASEDIR))
 
 from cybereason import Cybereason
@@ -62,4 +64,10 @@ async def client(config):
 class NotEnoughData(RuntimeError):
     def __init__(self, msg=None):
         default = 'Not enough data in the server to run this test.'
+        super().__init__(msg or default)
+
+
+class MismatchingDataModel(ValueError):
+    def __init__(self, msg=None):
+        default = 'The data model does not match the expected one.'
         super().__init__(msg or default)

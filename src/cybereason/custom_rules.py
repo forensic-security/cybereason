@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 
 class CustomRulesMixin(CybereasonProtocol):
+    # FIXME: breaks on 22.1
     async def get_active_custom_rules(self) -> 'List[Dict[str, Any]]':
         '''Retrieve a list of all active custom detection rules.
         '''
@@ -60,7 +61,7 @@ class CustomRulesMixin(CybereasonProtocol):
         '''
         return await self.post('customRules/decisionFeature/update', data)
 
-    async def get_custom_rule_history(self, rule_id) -> 'List[Dict[str, Any]]':
+    async def get_custom_rule_history(self, rule_id: int) -> 'List[Dict[str, Any]]':
         resp = await self.get(f'customRules/history/{rule_id}')
         if not resp['history']:
             raise ResourceNotFoundError(rule_id)

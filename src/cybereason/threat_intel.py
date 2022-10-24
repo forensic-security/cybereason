@@ -7,7 +7,7 @@ import hashlib
 from ._typing import CybereasonProtocol
 
 if TYPE_CHECKING:
-    from typing import AsyncIterator, Dict, Optional
+    from typing import AsyncIterator, Dict, List, Optional
 
 
 class ThreatIntelligenceMixin(CybereasonProtocol):
@@ -51,10 +51,10 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
                 }
             }]
         }
-        resp =await self.post_sage('classification_v1/ip_batch', data)
+        resp = await self.post_sage('classification_v1/ip_batch', data)
         return resp['classificationResponses']
 
-    async def check_reputation_update(self, resource: str):
+    async def check_reputation_update(self, resource: str) -> Any:
         '''Check the threat intelligence server to see if it has been
         updated recently.
         '''
@@ -73,15 +73,16 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
 # endregion
 
 # region LISTS
-    async def get_product_classifications(self):
+    async def get_product_classifications(self) -> 'List[Dict[str, Dict[str, Any]]]':
         '''Returns details on product classifications based on the
         threat intelligence service. This is used to identify the
-        application type based on the product name and process
-        image file signature.
+        application type based on the product name and process image
+        file signature.
         '''
-        return await self.post_sage('download_v1/productClassifications', {})
+        resp = await self.post_sage('download_v1/productClassifications', {})
+        return resp['recordList']
 
-    async def get_process_classifications(self):
+    async def get_process_classifications(self) -> Any:
         '''Returns details on process classifications based on the
         threat intelligence service. This is used by to identify the
         application type based on the process name, process image file
@@ -90,34 +91,34 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
         '''
         return await self.post_sage('download_v1/process_classification', {})
 
-    async def get_process_hierarchies(self):
+    async def get_process_hierarchies(self) -> Any:
         '''Returns details on process hierarchy based on the threat
         intelligence service. This is used to identify the expected
         hierarchy of operating system processes.
         '''
         return await self.post_sage('download_v1/process_hierarchy', {})
 
-    async def get_file_extensions_details(self):
+    async def get_file_extensions_details(self) -> Any:
         '''Returns details on file extensions based on the threat
         intelligence service. This is used to classify files and
         processes based on the extension of the file.
         '''
         return await self.post_sage('download_v1/file_extension', {})
 
-    async def get_ports_details(self):
+    async def get_ports_details(self) -> Any:
         '''Returns details on ports based on the threat intelligence
         service. This is used to classify communications based on the
         port of the connection.
         '''
         return await self.post_sage('download_v1/port', {})
 
-    async def get_collections_details(self):
+    async def get_collections_details(self) -> 'List[Dict[str, Dict[str, Any]]]':
         '''Returns details on collections of reference information used
         by the threat intelligence service.
         '''
-        return await self.post_sage('download_v1/const', {})
+        return (await self.post_sage('download_v1/const', {}))['recordList']
 
-    async def get_ip_reputations(self):
+    async def get_ip_reputations(self) -> Any:
         '''Returns a list of all IP address reputations used by the
         threat intelligence service.
         '''
@@ -125,7 +126,7 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
         warn("'get_ip_reputations' is deprecated", DeprecationWarning)
         return await self.post_sage('download_v1/ip_reputation', {})
 
-    async def get_domain_reputations(self):
+    async def get_domain_reputations(self) -> Any:
         '''Returns a list of all domain reputations used by the threat
         intelligence service.
         '''
