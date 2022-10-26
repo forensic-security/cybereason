@@ -1,0 +1,19 @@
+collections_details:
+  type: array
+  items:
+    type: object
+    properties:
+      key:
+        type: object
+        properties:
+          name:
+            type: string
+      value:
+        type: object
+        properties:
+          data:
+            type: array
+            items:
+              type: string
+    required: [ key, value ]
+    additionalProperties: false

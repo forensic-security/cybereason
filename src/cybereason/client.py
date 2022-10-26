@@ -441,3 +441,16 @@ class Cybereason(
         if resp['status'] == 'FAILURE':
             raise CybereasonException(resp['message'])
         return resp['data']
+
+    # TODO: https://nest.cybereason.com/documentation/product-documentation/221/machine-timeline
+    async def get_process_timeline(self, guid: str, minutes: int):
+        '''
+        Provides additional context for a process by displaying details
+        about sensor activity before and after the selected event,
+        within a certain time frame.
+
+        Args:
+            minutes: time range in minutes before and after the event.
+        '''
+        query = {'guid': guid, 'timeRangeInMinutes': minutes}
+        return await self.get('process-timeline/v1', query)

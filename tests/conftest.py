@@ -1,3 +1,4 @@
+from collections import abc
 from pathlib import Path
 import logging
 import asyncio
@@ -53,6 +54,23 @@ def event_loop():
     loop = policy.new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture(scope='session')
+def validate():
+    from jsonschema import validate as val
+    from yaml import safe_load
+    import inspect
+
+    def _validate(data, schema_name):
+        if isinstance(data, list) and not data:
+            raise NotEnoughData
+        frame = inspect.stack()[1]
+        file = Path(frame.filename).with_suffix('.yaml').name.removeprefix('test_')
+        schema = safe_load(SCHEMAS.joinpath(file).read_text())[schema_name]
+        return val(instance=data, schema=schema)
+
+    return _validate
 
 
 @pytest_asyncio.fixture(scope='session')

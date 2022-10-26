@@ -1,0 +1,47 @@
+BaseFileMalwareDataModel: &BaseFileMalware
+  type: object
+  properties:
+    '@class': { const: .BaseFileMalwareDataModel }
+    type: { enum: [ KnownMalware, UnknownMalware, ApplicationControlMalware ] }
+    detectionName: { type: [ string, 'null' ] }  # TODO: null depends on type?
+    filePath: { type: string }
+
+FilelessMalwareDataModel: &FilelessMalware
+  type: object
+  properties:
+    '@class': { const: .FilelessMalwareDataModel }
+    processName: { type: string }
+    url:
+      anyOf: [ { type: string, format: uri }, { type: 'null'} ]
+    detectionRule: { type: [ string, 'null' ]}
+    module: { type: [ string, 'null' ]}
+    description: { type: [ string, 'null' ]}
+
+malware_alerts:
+  type: array
+  items:
+    type: object
+    properties:
+      guid: { type: string}
+      timestamp: { type: integer }
+      name: { type: string }
+      type: { type: string }
+      elementType: { type: string }
+      machineName: { type: string }
+      status: { type: string }
+      needsAttention: { type: boolean }
+      referenceGuid: { type: string }
+      referenceElementType: { type: string }
+      score: { type: [ number, 'null' ] }  # TODO: nulls only in FilelessMalware ?
+      detectionValue: { type: [ string, 'null' ] }  # ditto ^
+      detectionValueType: { type: [ string, 'null' ] }  # ditto ^
+      detectionEngine: { type: string }
+      malwareDataModel: { anyOf: [ *BaseFileMalware, *FilelessMalware ] }
+      id:
+        type: object
+        properties:
+          guid: { type: string }
+          timestamp: { type: integer }
+          malwareType: { type: string }
+          elementType: { type: string }
+      schedulerScan: { type: boolean }

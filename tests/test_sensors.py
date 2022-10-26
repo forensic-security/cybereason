@@ -43,17 +43,13 @@ async def test_get_sensors(event_loop, client, log):
 
 
 @pytest.mark.asyncio
-async def test_get_malware_alters(client, log):
+async def test_get_malware_alerts(client, validate):
+    alerts = list()
+
     async for alert in client.get_malware_alerts():
-        try:
-            alert.keyes() == {
-                'detectionEngine', 'detectionValue', 'detectionValueType', 'elementType',
-                'guid', 'id', 'machineName', 'malwareDataModel', 'name', 'needsAttention',
-                'referenceElementType', 'referenceGuid', 'schedulerScan', 'score', 'status',
-                'timestamp', 'type',
-            }
-        except AssertionError:
-            raise MismatchingDataModel
-        break
+        alerts.append(alert)
+        if len(alerts) > 100:
+            break
     else:
-        raise NotEnoughData
+        if not alerts:
+            raise NotEnoughData

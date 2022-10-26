@@ -7,6 +7,7 @@ def _test_custom_rule(obj):
     assert obj.keys() == {'parentId', 'root', 'malopActivityType'}
 
 
+# FIXME: breaks on 22.1
 @pytest.mark.asyncio
 async def test_get_active_custom_rules(client):
     resp = await client.get_active_custom_rules()
