@@ -11,6 +11,10 @@ def _test_custom_rule(obj):
 @pytest.mark.asyncio
 async def test_get_active_custom_rules(client):
     resp = await client.get_active_custom_rules()
+    import json
+    with open('custom-rules.json', 'w', encoding='utf-8') as f:
+        f.write(json.dumps(resp, indent=4, ensure_ascii=False))
+
     try:
         assert resp[0].keys() == {
             'id', 'name', 'rootCause', 'malopDetectionType', 'rule', 'description',

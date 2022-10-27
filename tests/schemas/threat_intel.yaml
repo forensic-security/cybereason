@@ -1,3 +1,19 @@
+product_classifications:
+  type: array
+  items:
+    type: object
+    properties:
+      key:
+        type: object
+        properties:
+          name: { type: string }
+      value:
+        type: object
+        properties:
+          signer: { type: array, items: { type: string }}
+          type: { type: string }
+          title: { type: string }
+
 collections_details:
   type: array
   items:
@@ -6,14 +22,21 @@ collections_details:
       key:
         type: object
         properties:
-          name:
-            type: string
+          name: { type: string }
       value:
         type: object
         properties:
           data:
             type: array
-            items:
-              type: string
-    required: [ key, value ]
-    additionalProperties: false
+            items: { type: string }
+
+reputations:
+  type: array
+  items:
+    type: object
+    properties:
+      comment: { type: [ string, 'null' ]}
+      key: { type: string }
+      prevent execution: { type: boolean }
+      remove: { type: boolean }
+      reputation: { enum: [ blacklist, whitelist ]}

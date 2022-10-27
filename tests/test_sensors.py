@@ -1,6 +1,6 @@
 import pytest
 
-from .conftest import MismatchingDataModel, NotEnoughData
+from .conftest import MismatchingDataModel, NotEnoughData, aenumerate
 
 
 @pytest.mark.asyncio
@@ -46,10 +46,20 @@ async def test_get_sensors(event_loop, client, log):
 async def test_get_malware_alerts(client, validate):
     alerts = list()
 
-    async for alert in client.get_malware_alerts():
+    async for i, alert in aenumerate(client.get_malware_alerts()):
         alerts.append(alert)
-        if len(alerts) > 100:
+        if i > 100:
             break
-    else:
-        if not alerts:
-            raise NotEnoughData
+
+    validate(alerts, 'malware_alerts')
+
+
+@pytest.mark.asyncio
+async def test_get_policies(client, validate):
+    # TODO: validate `show_config=False`
+    policies = [x async for x in client.get_policies(show_config=True)]
+    import json
+    with open('policies.json', 'w', encoding='utf-8') as f:
+        f.write(json.dumps(policies, indent=4, ensure_ascii=False))
+
+    validate(policies, 'policies')

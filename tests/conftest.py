@@ -1,4 +1,4 @@
-from collections import abc
+from collections.abc import AsyncIterator
 from pathlib import Path
 import logging
 import asyncio
@@ -6,7 +6,6 @@ import sys
 
 import pytest
 import pytest_asyncio
-
 
 HERE = Path(__file__).resolve().parent
 BASEDIR = HERE.parent / 'src'
@@ -62,13 +61,28 @@ def validate():
     from yaml import safe_load
     import inspect
 
+    def tighten_schema(schema):
+        if schema.get('type') == 'array':
+            if 'items' in schema:
+                schema['items'] = tighten_schema(schema['items'])
+        elif schema.get('type') == 'object':
+            # set `additionalProperties` and `required` if not set
+            if 'properties' in schema:
+                schema.setdefault('additionalProperties', False)
+                schema.setdefault('required', list(schema['properties'].keys()))
+                schema['properties'] = {k: tighten_schema(v) for k, v in schema['properties'].items()}
+
+        return schema
+
     def _validate(data, schema_name):
         if isinstance(data, list) and not data:
             raise NotEnoughData
         frame = inspect.stack()[1]
         file = Path(frame.filename).with_suffix('.yaml').name.removeprefix('test_')
-        schema = safe_load(SCHEMAS.joinpath(file).read_text())[schema_name]
-        return val(instance=data, schema=schema)
+        schemata = safe_load(SCHEMAS.joinpath(file).read_text())
+        schemata = {k: tighten_schema(v) for k, v in schemata.items()}
+
+        return val(instance=data, schema=schemata[schema_name])
 
     return _validate
 
@@ -77,6 +91,21 @@ def validate():
 async def client(config):
     async with Cybereason(**config) as client:
         yield client
+
+
+class aenumerate(AsyncIterator):
+    def __init__(self, aiterable, start=0):
+        self._aiterable = aiterable
+        self._i = start - 1
+
+    def __aiter__(self):
+        self._aiter = self._aiterable.__aiter__()
+        return self
+
+    async def __anext__(self):
+        value = await self._aiter.__anext__()
+        self._i += 1
+        return self._i, value
 
 
 class NotEnoughData(RuntimeError):

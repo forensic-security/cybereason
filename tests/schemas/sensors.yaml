@@ -36,7 +36,7 @@ malware_alerts:
       detectionValue: { type: [ string, 'null' ] }  # ditto ^
       detectionValueType: { type: [ string, 'null' ] }  # ditto ^
       detectionEngine: { type: string }
-      malwareDataModel: { anyOf: [ *BaseFileMalware, *FilelessMalware ] }
+      malwareDataModel: { oneOf: [ *BaseFileMalware, *FilelessMalware ] }
       id:
         type: object
         properties:
@@ -45,3 +45,108 @@ malware_alerts:
           malwareType: { type: string }
           elementType: { type: string }
       schedulerScan: { type: boolean }
+
+policies:
+  type: array
+  items:
+    type: object
+    properties:
+      metadata:
+        type: object
+        properties:
+          id: { type: string, format: uuid }
+          name: { type: string }
+          description: { type: string }
+          createdBy: { type: string, format: email }
+          creationTime: { type: integer }
+          lastEditedBy: { type: string, format: email }
+          lastEditedTime: { type: integer }
+          assignedSensors: { type: integer }
+          isDefault: { type: boolean }
+          nonCompliantSensors: { type: integer }
+          assignedGroupIds:
+            type: array
+            items: { type: string}
+          groupId: { type: string}
+      configuration:
+        type: object  # TODO: objects without properties
+        properties:
+          nameDescription:
+            type: object
+            properties:
+              name: { type: string }
+              description: { type: string }
+              notes: { type: string }
+              groupId: { type: string }
+          antiMalware: { type: object }
+          powershellProtection: { type: object }
+          antiRansomware: { type: object }
+          appControl:
+            type: object
+            properties:
+              enabled: { type: boolean }
+          collectionFeatures: { type: object }
+          endpointUiSettings: { type: object }
+          endpointProtection: { type: object }
+          antiExploit:
+            type: object
+            properties:
+              enabled: { type: boolean }
+              antiExploitMode: { type: string }  # TODO: enum
+              antiExploitExclusions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    dataHash: { type: string }
+                    description: { type: string }
+                    lastModified: { type: integer }
+                    modifiedBy: { type: string, format: email }
+                    processName: { type: string }
+          advancedFlags:
+            type: object
+            properties:
+              enabled: { type: boolean }
+              flagValues: { type: array, items: { type: string }}
+          response:
+            type: object
+            properties:
+              enabled: { type: boolean }
+          cms: { type: object }
+          infrastructure:
+            type: object
+            properties:
+              selfProtectEnabled: { type: boolean }
+          rulesEngine:
+            type: object
+            properties:
+              rulesEngineMode: { type: string }  # TODO: enum
+              pathExclusions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    dataHash: { type: string }
+                    description: { type: string }
+                    item: { type: string }
+                    lastModified: { type: integer }
+                    modifiedBy: { type: string, format: email }
+              rulesIdExclusions: { type: array, items: { type: string }}
+              bsaMode: { type: string}  # TODO: enum
+          arw:
+            type: object
+            properties:
+              mode: { type: string }  # TODO: enum
+              level: { type: string }  # TODO: enum
+              mbrEnabled: { type: boolean }
+              vssEnabled: { type: boolean }
+              autoRestoreEnabled: { type: boolean }
+              allowlist: { type: array }
+              customShadowCopyEnabled: { type: boolean }
+              maxDiscSpace: { type: integer }
+              drives: { type: array }
+              allDrivesEnabled: { type: boolean }
+          certificateExclusions:
+            type: object
+            properties:
+              certificateExclusions: { type: array }

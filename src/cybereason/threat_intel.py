@@ -154,9 +154,8 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
             boolean=['prevent execution', 'remove'],
             optional=['comment'],
         ):
-            if reputation:
-                if item['reputation'] == reputation:
-                    yield item
-            else:
+            if not reputation:
+                yield item
+            elif item['reputation'] == reputation:
                 yield item
 # endregion
