@@ -94,6 +94,12 @@ class SensorsMixin(CybereasonProtocol):
     async def remove_sensor(self, sensor_id: 'SensorId') -> 'Any':
         data = {'sensorsIds': [sensor_id], 'filters': []}
         return self.post('sensors/action/purgeSensors', data)
+    
+    @min_version(21, 2, 145)
+    @authz('System Admin')
+    async def uninstall_sensor(self, sensor_id: 'SensorId') -> 'Any':
+        data = {'sensorsIds': [sensor_id]}
+        return await self.post('sensors/action/uninstall', data)
 
     @min_version(21, 2, 145)
     @authz('System Admin')
