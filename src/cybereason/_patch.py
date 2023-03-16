@@ -11,7 +11,7 @@ _field_name_re = re.compile(field_name.encode('ascii'))
 _field_value_re = re.compile(field_value.encode('ascii'))
 
 
-def normalize_and_validate(headers, _parsed: bool=False):
+def normalize_and_validate(headers, _parsed: bool = False):
     new_headers = []
     seen_content_length = None
     saw_transfer_encoding = False

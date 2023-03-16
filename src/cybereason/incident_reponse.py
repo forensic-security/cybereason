@@ -83,7 +83,7 @@ class IncidentResponseMixin(CybereasonProtocol):
         # TODO
         return await self.get('irtools/credentials')
 
-    @min_version(21,2, 221)
+    @min_version(21, 2, 221)
     @authz('Responder L2')
     async def get_forensics_tools(self):
         '''Retrieves a list of supported forensic data ingestion tools.

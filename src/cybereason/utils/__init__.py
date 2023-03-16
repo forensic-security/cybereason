@@ -7,7 +7,7 @@ import re
 
 
 if TYPE_CHECKING:
-    from typing import Any, AsyncIterator, Dict, Iterator, List
+    from typing import Any, AsyncIterator, Dict, List
     from httpx import Response
 
 
@@ -21,6 +21,7 @@ class Unset:
 
     def __contains__(self, o):
         return False
+
 
 unset = Unset()
 

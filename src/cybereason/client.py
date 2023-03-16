@@ -2,7 +2,6 @@ from typing import Any, Optional, TYPE_CHECKING, cast
 from json.decoder import JSONDecodeError
 from functools import cached_property
 from pathlib import Path
-from os import PathLike
 from io import BytesIO
 import logging
 
@@ -14,11 +13,9 @@ from httpx import AsyncClient, HTTPStatusError, ConnectError
 
 from .exceptions import (
     AccessDenied, AuthenticationError, ResourceNotFoundError,
-    ServiceDisabled, UnauthorizedRequest,
-    CybereasonException, ServerError, ClientError,
-    authz, min_version,
+    UnauthorizedRequest, CybereasonException, ServerError, ClientError,
 )
-from .utils import find_next_version, get_filename, to_list
+from .utils import get_filename, to_list
 from .custom_rules import CustomRulesMixin
 from .incident_reponse import IncidentResponseMixin
 from .malops import MalopsMixin
@@ -80,7 +77,7 @@ class Cybereason(
             # see: commit f439393
             try:
                 from httpx_socks import AsyncProxyTransport
-            except ImportError as e:
+            except ImportError:
                 msg = 'Install SOCKS proxy support using `pip install cybereason[socks]`.'
                 raise ImportError(msg) from None
 
@@ -102,7 +99,7 @@ class Cybereason(
     @cached_property
     def session_sage(self) -> AsyncClient:
         return AsyncClient(
-            base_url=f'https://sage.cybereason.com/rest',
+            base_url='https://sage.cybereason.com/rest',
             headers={'content-type': 'application/json'},
             cookies=self.session.cookies,
             timeout=self.timeout,
@@ -412,8 +409,10 @@ class Cybereason(
     @cached_property
     def features_map(self) -> 'Dict[str, Dict[str, Any]]':
         import asyncio
+
         async def func():
             return await self.get('translate/features/all/')
+
         return asyncio.run(func())
 
     async def get_user_audit_logs(self, rotated: bool = True) -> 'AsyncIterator[Dict]':

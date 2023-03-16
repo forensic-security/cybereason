@@ -5,6 +5,7 @@ import pytest_asyncio
 # region LABELS
 LABEL = 'TEST_LABEL'
 
+
 @pytest_asyncio.fixture(scope='module')
 async def label_test(client):
     '''Also tests creation and deleting of labels.

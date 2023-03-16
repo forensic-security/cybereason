@@ -1,5 +1,4 @@
 from datetime import datetime, date, timezone
-from time import time
 from typing import TYPE_CHECKING
 import logging
 
@@ -38,7 +37,7 @@ class MalopsMixin(CybereasonProtocol):
 
         return (await self.post('detection/inbox', data))['malops']
 
-    async def get_active_malops(self, logon: bool=False) -> 'AsyncIterator[Dict[str, Any]]':
+    async def get_active_malops(self, logon: bool = False) -> 'AsyncIterator[Dict[str, Any]]':
         '''Get all malops currently active.
         '''
 
@@ -52,7 +51,7 @@ class MalopsMixin(CybereasonProtocol):
         }
 
         for req_type in ('MalopProcess', 'MalopLogonSession'):
-            data['queryPath'][0]['requestedType'] = req_type
+            data['queryPath'][0]['requestedType'] = req_type  # type: ignore
 
             resp = await self.post('crimes/unified', data)
 

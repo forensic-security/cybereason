@@ -24,4 +24,4 @@ async def test_decorators():
     assert r == [True]
 
     r = await test.asynccorofunc()
-    assert r == True
+    assert r is True

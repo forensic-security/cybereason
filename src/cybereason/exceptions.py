@@ -1,9 +1,9 @@
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from typing import Union, AsyncIterator, Callable, Awaitable
+    from typing import Union, AsyncIterator, Callable, Awaitable, TypeVar
 
-    AsyncFunc = Union[AsyncIterator, Callable[..., Awaitable[None]]]
+    F = TypeVar('F', bound=Callable[..., Union[AsyncIterator, Awaitable]])
 
 
 class CybereasonException(Exception):
@@ -65,7 +65,7 @@ def _add_to_doc(doc: Optional[str], text: str) -> str:
     return f'{doc}\n\n{dedent(text)}'
 
 
-def authz(role) -> 'AsyncFunc':
+def authz(role) -> 'Callable[[F], F]':
     '''Adds context to authorization errors.
     '''
     from inspect import isasyncgenfunction
@@ -100,7 +100,7 @@ def authz(role) -> 'AsyncFunc':
 
 
 # TODO: exception is always status == 404?
-def min_version(major: int, minor: int, release: int = 0) -> 'AsyncFunc':
+def min_version(major: int, minor: int, release: int = 0) -> 'Callable[[F], F]':
     from inspect import isasyncgenfunction
     from functools import wraps
 

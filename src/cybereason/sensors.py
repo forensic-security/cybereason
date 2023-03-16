@@ -27,7 +27,7 @@ class SensorsMixin(CybereasonProtocol):
         self,
         *, archived: bool = True,
         filters:     'Optional[List[Any]]' = None,
-        page_size:   Optional[int] = None,
+        page_size:   Optional[int] = None,  # TODO
     ) -> 'AsyncIterator[Dict[str, Any]]':
         '''Returns details on all or a selected group of sensors.
 
@@ -94,7 +94,7 @@ class SensorsMixin(CybereasonProtocol):
     async def remove_sensor(self, sensor_id: 'SensorId') -> 'Any':
         data = {'sensorsIds': [sensor_id], 'filters': []}
         return self.post('sensors/action/purgeSensors', data)
-    
+
     @min_version(22, 1, 168)
     @authz('System Admin')
     async def uninstall_sensor(self, sensor_id: 'SensorId') -> 'Any':
@@ -319,7 +319,7 @@ class SensorsMixin(CybereasonProtocol):
                 if value is None:
                     tags[name] = {'operation': 'REMOVE'}
                 elif isinstance(value, typ):
-                    if typ == str and len(value) > 100:
+                    if typ == str and len(value) > 100:  # type: ignore
                         err = f'The maximum length for the {name!r} tag is 100 characters'
                         raise ValueError(err)
                     tags[name] = {'operation': 'SET', 'value': value}
@@ -334,7 +334,7 @@ class SensorsMixin(CybereasonProtocol):
         for tag, result in resp.items():
             if not result['success']:
                 # ignore unsuccessful deletions of missing tags
-                if not(result['operation'] == 'REMOVE' and result['oldValue'] == ''):
+                if not (result['operation'] == 'REMOVE' and result['oldValue'] == ''):
                     err[tag] = result
         if err:
             raise ClientError(err)

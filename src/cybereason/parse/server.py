@@ -4,7 +4,6 @@ from functools import cached_property
 from pathlib import Path
 from io import StringIO
 import logging
-import json
 import gzip
 import re
 
@@ -37,9 +36,10 @@ class ServerLogParser:
             rf'(?P<level>{LV})\s+'
             r'(?P<logger>.*?):\d+\s+-\s+'
             r'(?P<message>.*?$)',
-        re.M)
+            re.M,
+        )
 
-    def parse(self, logname: str, *, rotated: bool=False) -> 'Iterator[Dict[str, Any]]':
+    def parse(self, logname: str, *, rotated: bool = False) -> 'Iterator[Dict[str, Any]]':
         try:
             parser = self.logs.get(logname, {})['parser']
         except KeyError:

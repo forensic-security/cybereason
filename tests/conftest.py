@@ -1,8 +1,10 @@
 from collections.abc import AsyncIterator
 from pathlib import Path
 import logging
+import inspect
 import asyncio
 import sys
+import os
 
 import pytest
 import pytest_asyncio
@@ -20,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture(scope='session')
 def config():
-    import os, inspect
     config = dict()
     required = list()
 
@@ -29,7 +30,7 @@ def config():
             required.append(name)
         try:
             config[name] = os.environ[f'cybereason_{name}'.upper()]
-        except KeyError as e:
+        except KeyError:
             pass
 
     if not all(x in config for x in required):
