@@ -1,0 +1,64 @@
+MachineInboxModel: &MachineInbox
+  type: object
+  properties:
+    '@class': { const: .MachineInboxModel }
+    guid: { type: string }
+    displayName: { type: string }
+    osType: { enum: [ LINUX, OSX, WINDOWS ] }
+    connected: { type: boolean }
+    isolated: { type: boolean }
+    lastConnected: { type: integer }
+    empty: { type: boolean }
+
+UserInboxModel: &UserInbox
+  guid: { type: string, pattern: '^[A-Za-z0-9_-]{16}$' }
+  displayName: { type: string }
+  admin: { type: boolean }
+  localSystem: { type: boolean }
+  domainUser: { type: boolean }
+
+MalopInboxModel: &MalopInbox
+  type: object
+  properties:
+    '@class': { const: .MalopInboxModel }
+    guid: { type: string, pattern: '^[A-Za-z0-9_-]{16}$' }
+    displayName: { type: string }
+    rootCauseElementType: { enum: [ File, Process, Module, IpAddress ] }
+    primaryRootCauseName: { type: string }
+    rootCauseElementNamesCount: { type: integer }
+    detectionEngines: { type: array, items: { enum: [ AntiExploit, AntiVirus, ApplicationControl, Document, EDR, RulesEngine, Script, StaticAnalysis ] } }
+    detectionTypes: { type: array, items: { type: string } }
+    malopDetectionType: { enum: [ BLACKLIST, CNC, UNKNWOWN, MALICIOUS_PROCESS, PHISHING, KNOWN_MALWARE, CUSTOM_RULE ] }
+    malopType: { enum: [ BLACKLIST, CNC, UNKNWOWN, MALICIOUS_PROCESS, PHISHING, KNOWN_MALWARE, CUSTOM_RULE ] }
+    creationTime: { type: integer }
+    lastUpdateTime: { type: integer }
+    iconBase64:
+      type: string
+      media: { binaryEncoding: base64, type: image/png }
+    priority: { enum: [ LOW, HIGH ] }
+    malopPriority: { enum: [ LOW, HIGH ] }
+    group: { type: string, format: uuid }
+    rootCauseElementHashes: { type: string }
+    status: { enum: [ Excluded, Active, Remediated, Closed ] }
+    severity: { enum: [ Low, Medium, High, '' ] }
+    malopSeverity: { enum: [ Low, Medium, High, '' ] }
+    machines: { type: array, items: *MachineInbox }
+    users: { type: array, items: *UserInbox }
+    containers: { type: array }  # TODO
+    labels: { type: array, items: { type: string }}
+    decisionStatuses: { type: array, items: { enum: [ Prevented, Detected ] } }
+    malopCloseTime: { type: [ integer, 'null' ] }
+    closerName:
+      anyOf:
+        - { type: string, format: email }
+        - { const: Cybereason }
+        - { type: 'null'}
+    edr: { type: boolean }
+    escalated: { type: boolean }
+    malopStatus: { type: string }
+    closed: { type: boolean }
+    empty: { type: boolean }
+
+malops:
+  type: array
+  items: *MalopInbox

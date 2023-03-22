@@ -1,5 +1,14 @@
+from datetime import datetime, date, timedelta
+
 import pytest
 import pytest_asyncio
+
+
+@pytest.mark.asyncio
+async def test_get_malops(client, validate):
+    start = datetime.utcnow() - timedelta(days=30)
+    resp = await client.get_malops(start, date.today())
+    validate(resp, 'malops')
 
 
 # region LABELS

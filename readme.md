@@ -56,4 +56,4 @@ asyncio.run(user_audit())
 
 ---
 
-Copyright &copy; 2021-2022 [Forensic & Security](https://forensic-security.com/)
+Copyright &copy; 2021-2023 [Forensic & Security](https://forensic-security.com/)

@@ -7,5 +7,6 @@ build/
 .venv/
 dist/
 docs/
+*.json
 test.*
 .env

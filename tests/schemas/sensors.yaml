@@ -57,17 +57,15 @@ policies:
           id: { type: string, format: uuid }
           name: { type: string }
           description: { type: string }
-          createdBy: { type: string, format: email }
+          createdBy: { anyOf: [ { type: string, format: email }, { const: Admin } ] }
           creationTime: { type: integer }
-          lastEditedBy: { type: string, format: email }
+          lastEditedBy: { anyOf: [ { type: string, format: email }, { const: '' } ] }
           lastEditedTime: { type: integer }
           assignedSensors: { type: integer }
           isDefault: { type: boolean }
           nonCompliantSensors: { type: integer }
-          assignedGroupIds:
-            type: array
-            items: { type: string}
-          groupId: { type: string}
+          assignedGroupIds: { type: array, items: { type: string } }
+          groupId: { type: string }
       configuration:
         type: object  # TODO: objects without properties
         properties:
@@ -78,8 +76,8 @@ policies:
               description: { type: string }
               notes: { type: string }
               groupId: { type: string }
-          antiMalware: { type: object }
-          powershellProtection: { type: object }
+          antiMalware: { type: object }  # TODO
+          powershellProtection: { type: object }  # TODO
           antiRansomware: { type: object }
           appControl:
             type: object
@@ -131,7 +129,7 @@ policies:
                     item: { type: string }
                     lastModified: { type: integer }
                     modifiedBy: { type: string, format: email }
-              rulesIdExclusions: { type: array, items: { type: string }}
+              rulesIdExclusions: { type: array, items: { type: object }}
               bsaMode: { type: string}  # TODO: enum
           arw:
             type: object
@@ -150,3 +148,121 @@ policies:
             type: object
             properties:
               certificateExclusions: { type: array }
+
+sensors:
+  type: array
+  items:
+    type: object
+    properties:
+      sensorId: { type: string }
+      pylumId: { type: string }
+      guid:
+        oneOf:
+          - { type: string, pattern: '^[A-Za-z0-9_-]{16}$' }
+          - { const: '' }
+      fqdn:
+        anyOf:
+          - { type: string, format: idn-hostname }
+          - { const: '' }
+      machineName: { type: string }
+      internalIpAddress: { type: string, format: ipv4 }
+      externalIpAddress: { type: string, format: ipv4 }
+      siteName: { type: string }
+      siteId: { type: integer }
+      ransomwareStatus: { enum: [ DISABLED, DETECT_AND_SUSPEND, DETECT_SUSPEND_PREVENT, UNKNOWN ] }
+      preventionStatus: { enum: [ NOT_INSTALLED, DISABLED, ENABLED, UNKNOWN ] }
+      isolated: { type: boolean }
+      disconnectionTime: { type: integer }
+      lastPylumInfoMsgUpdateTime: { type: integer }
+      lastPylumUpdateTimestampMs: { type: integer }
+      status: { enum: [ Archived, Stale, Online, Offline ] }
+      serviceStatus: { enum: [ Down, Up ] }
+      onlineTimeMS: { type: integer }
+      offlineTimeMS: { type: integer }
+      staleTimeMS: { type: integer }
+      archiveTimeMs: { type: [ integer, 'null' ] }
+      statusTimeMS: { type: integer }
+      lastStatusAction: { enum: [ Archive, None ] }
+      archivedOrUnarchiveComment: { type: string }
+      sensorArchivedByUser: { type: string }
+      serverName: { type: string }
+      serverId: { type: string }  # TODO: pattern
+      serverIp: { type: string, format: ipv4 }
+      privateServerIp: { type: string, format: ipv4 }
+      collectiveUuid: { type: string, format: uuid }
+      osType: { enum: [ LINUX, OSX, WINDOWS ] }
+      osVersionType: { type: string }
+      collectionStatus: { enum: [ DISABLED, ADVANCED, ENABLED, SUSPENDED ] }
+      version: { type: string }
+      consoleVersion: { type: [ string, 'null' ] }
+      firstSeenTime: { type: integer }
+      upTime: { type: integer }
+      cpuUsage: { type: number }
+      memoryUsage: { type: integer }
+      outdated: { type: boolean }
+      amStatus: { enum: [ AM_DETECT_ONLY, AM_BLOCK, UNKNOWN, AM_PRIOR_AV_ERROR, AM_UNINSTALLED, AM_DETECT_DISINFECT, AM_FIRST_TIME_INITIALIZATION ] }
+      amModeOrigin: { type: [ string, 'null' ] }
+      avDbVersion: { type: string }
+      avDbLastUpdateTime: { type: integer }
+      powerShellStatus: { enum: [ '', PS_DISABLED, PS_ENABLED ] }
+      bepMode: { enum: [ '', BEP_DISABLED, BEP_PREVENT, BEP_DETECT ] }
+      vppMode: { enum: [ '', VPP_PREVENT, VPP_DETECT, VPP_DISABLED ] }
+      remoteShellStatus: { enum: [ AC_ENABLED, AC_DISABLED ] }
+      usbStatus: { type: string }  # TODO: enum
+      fwStatus: { type: string }  # TODO: enum
+      antiExploitStatus: { enum: [ '', AE_DISABLED, AE_CAUTIOUS, AE_UNKNOWN ] }
+      documentProtectionStatus: { enum: [ '', DS_PREVENT, DS_UNKNOWN, DS_DETECT, DS_DISABLED ] }
+      documentProtectionMode: { enum: [ '', DM_UNKNOWN, DM_CAUTIOUS ] }
+      serialNumber: { type: string }
+      deviceModel: { type: string }
+      organizationalUnit: { type: string }
+      variantFilePreventionMode: { enum: [ '', VFP_M_UNKNOWN, VFP_M_DISABLED ] }
+      antiMalwareStatus: { enum: [ '', AM_ENABLED, AM_DISABLED ] }
+      antiMalwareModeOrigin: { type: [ string, 'null' ]}  # TODO: enum
+      organization: { type: string }
+      proxyAddress: { type: string }
+      preventionError: { type: string }  # TODO: enum
+      exitReason: { type: string }  # TODO: enum
+      actionsInProgress: { type: integer }
+      pendingActions: { type: array }  # TODO
+      lastUpgradeResult: { enum: [ Succeeded, Failed, None, AlreadyUpdated, Uninstalled, NewPackageDownloaded ] }
+      department: { type: [ string, 'null' ] }
+      location: { type: [ string, 'null' ] }
+      criticalAsset: { type: [ boolean, 'null' ] }
+      deviceType: { type: [ string, 'null' ] }
+      customTags: { type: [ string, 'null' ] }
+      lastUpgradeSteps:
+        type: array
+        items:
+          type: object
+          properties:
+            name: { type: string }  # TODO: enum
+            startTime: { type: integer }
+      disconnected: { type: boolean }
+      staticAnalysisDetectMode: { enum: [ CAUTIOUS, DISABLED, MODERATE, UNKNOWN ] }
+      staticAnalysisDetectModeOrigin: { type: [ string, 'null' ] }  # TODO: enum
+      staticAnalysisPreventMode: { enum: [ CAUTIOUS, DISABLED, UNKNOWN ] }
+      staticAnalysisPreventModeOrigin: { type: [ string, 'null' ] }  # TODO: enum
+      collectionComponents: { type: array, items: { enum: [ DPI, Metadata, File Events, Registry Events ] }}
+      sensorLastUpdate: { type: integer }
+      fullScanStatus: { enum: [ IN_PROGRESS, IDLE, UNKNOWN ] }
+      quickScanStatus: { enum: [ IN_PROGRESS, IDLE, UNKNOWN ] }
+      lastFullScheduleScanSuccessTime: { type: integer }
+      lastQuickScheduleScanSuccessTime: { type: integer }
+      policyName: { type: string }
+      deliveryTime: { type: integer }
+      policyId:
+        oneOf:
+          - { type: string, format: uuid }
+          - { type: 'null' }
+      compliance: { type: [ boolean, 'null' ] }
+      groupId: { type: string, format: uuid }
+      groupName: { type: string }
+      groupStickiness: { type: boolean }
+      purgedSensors: { type: boolean }
+      sensorPurgedByUser: { type: [ string, 'null' ] }
+      purgeTimestamp: { type: [ integer, 'null' ] }
+      decommissionedSensors: { type: boolean }
+      decommissionedByUser: { type: [ string, 'null' ] }
+      decommissionTimestamp: { type: [ integer, 'null' ] }
+      groupStickinessLabel: { enum: [ Dynamic, Manual ] }

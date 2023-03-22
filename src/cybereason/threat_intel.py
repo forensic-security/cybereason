@@ -134,6 +134,7 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
         warn("'get_domain_reputations' is deprecated", DeprecationWarning)
         return await self.post_sage('download_v1/domain_reputation', {})
 
+    # XXX: broken: commas not escaped, `None` and `` in boolean fields...
     async def get_reputations(
         self,
         reputation: 'Optional[str]' = None,

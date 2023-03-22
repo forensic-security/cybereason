@@ -16,13 +16,18 @@ log = logging.getLogger(__name__)
 
 class MalopsMixin(CybereasonProtocol):
     async def get_malops(
-        self, start: 'Union[datetime, date]', end: 'Union[datetime, date]'
+        self,
+        start: 'Union[datetime, date]',
+        end:   'Union[datetime, date, None]' = None,
     ) -> 'List[Dict[str, Any]]':
         '''Retrieve all malops of all types between the given dates.
         '''
         if isinstance(start, date):
             start = datetime.combine(start, datetime.min.time())
-        if isinstance(end, date):
+
+        if end is None:
+            end = datetime.combine(date.today(), datetime.max.time())
+        elif isinstance(end, date):
             end = datetime.combine(end, datetime.max.time())
 
         if start.tzinfo is None:
