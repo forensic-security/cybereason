@@ -71,7 +71,9 @@ def validate():
             if 'properties' in schema:
                 schema.setdefault('additionalProperties', False)
                 schema.setdefault('required', list(schema['properties'].keys()))
-                schema['properties'] = {k: tighten_schema(v) for k, v in schema['properties'].items()}
+                schema['properties'] = {
+                    k: tighten_schema(v) for k, v in schema['properties'].items()
+                }
 
         return schema
 
@@ -80,7 +82,9 @@ def validate():
             raise NotEnoughData
         frame = inspect.stack()[1]
         file = Path(frame.filename).with_suffix('.yaml').name.removeprefix('test_')
-        schemata = safe_load(SCHEMAS.joinpath(file).read_text())
+        common = SCHEMAS.joinpath('_common.yaml').read_text()
+        specific = SCHEMAS.joinpath(file).read_text()
+        schemata = safe_load('\n'.join((common, specific)))
         schemata = {k: tighten_schema(v) for k, v in schemata.items()}
 
         return val(instance=data, schema=schemata[schema_name])

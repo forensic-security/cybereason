@@ -56,14 +56,14 @@ class IncidentResponseMixin(CybereasonProtocol):
                 _platform = dict(x86='ARCH_X86', x64='ARCH_AMD64')[platform]
             except KeyError:
                 raise ValueError("Platform must be 'x86' or 'x64'") from None
-            data['packageOSInfoList']['platform'] = _platform
+            data['packageOSInfoList']['platform'] = _platform  # type: ignore
 
         if run_command or output_dir:
             data['packageRunConfiguration'] = {}
             if run_command:
-                data['packageRunConfiguration']['runCommand'] = run_command
+                data['packageRunConfiguration']['runCommand'] = run_command  # type: ignore
             if output_dir:
-                data['packageRunConfiguration']['outputDir'] = output_dir
+                data['packageRunConfiguration']['outputDir'] = output_dir  # type: ignore
 
         try:
             package_info = 'file', open(filepath, 'rb'), 'application/octet-stream'

@@ -68,7 +68,7 @@ class ServerLogParser:
 
         if rotation == 'seq':
             ptrn = re.compile(r'(\d+)').search
-            sort = lambda x: int(ptrn(x.stem).group(0))
+            sort = lambda x: int(ptrn(x.stem).group(0))  # type: ignore
             archives = sorted(archives, key=sort, reverse=True)
 
         return archives

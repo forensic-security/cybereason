@@ -8,7 +8,7 @@ import logging
 # monkey-patch to allow multiple {'file-encoding': 'chunked'} headers
 import httpx
 from ._patch import normalize_and_validate
-httpx._transports.default.httpcore._async.http11.h11._headers.normalize_and_validate = normalize_and_validate
+httpx._transports.default.httpcore._async.http11.h11._headers.normalize_and_validate = normalize_and_validate  # noqa: E501
 from httpx import AsyncClient, HTTPStatusError, ConnectError
 
 from .exceptions import (
@@ -428,7 +428,7 @@ class Cybereason(
             for line in content.splitlines()[::-1]:
                 yield cefparse(line.decode())
 
-    # TODO: https://nest.cybereason.com/documentation/api-documentation/all-versions/how-build-queries
+    # https://nest.cybereason.com/documentation/api-documentation/all-versions/how-build-queries
     async def query(self, data: 'Dict[str, Any]') -> 'Dict[str, Any]':
         # default since version 20.1.381
         data.setdefault('perGroupLimit', 100)

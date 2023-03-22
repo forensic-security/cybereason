@@ -12,7 +12,7 @@ class CustomRulesMixin(CybereasonProtocol):
     async def get_active_custom_rules(self) -> 'List[Dict[str, Any]]':
         '''Retrieve a list of all active custom detection rules.
         '''
-        resp = await self.get('customRules/decisionFeature/live')
+        resp = await self.get('v2/customRules/decisionFeature/live')
         # TODO: resp['limitExceed']: bool ?
         return resp['rules']
 
@@ -20,27 +20,27 @@ class CustomRulesMixin(CybereasonProtocol):
         '''Returns a list of all custom rules currently disabled in your
         environment.
         '''
-        return await self.get('customRules/decisionFeature/deleted')
+        return await self.get('v2/customRules/decisionFeature/deleted')
 
     async def get_root_causes(self) -> 'List[str]':
         '''Returns a list of all Elements you can use for a root cause
         for a Malop generated from this custom rule.
         '''
-        return await self.get('customRules/rootCauses')
+        return await self.get('v2/customRules/rootCauses')
 
     @authz('L3 Analyst')
     async def get_malop_detection_types(self) -> 'List[Dict[str, str]]':
         '''Returns a list of all available detection types you can use
         for custom detection rules.
         '''
-        return await self.get('customRules/getMalopDetectionTypes')
+        return await self.get('v2/customRules/getMalopDetectionTypes')
 
     @authz('L3 Analyst')
     async def get_malop_activity_types(self) -> 'List[Dict[str, str]]':
         '''Returns a list of all available Malop activity types you can
         use for custom detection rules.
         '''
-        return await self.get('customRules/getMalopActivityTypes')
+        return await self.get('v2/customRules/getMalopActivityTypes')
 
     # TODO
     async def create_custom_rule(self, data):
@@ -53,16 +53,16 @@ class CustomRulesMixin(CybereasonProtocol):
             can have detrimental impact on retention and overall
             performance of the environment.
         '''
-        return await self.post('customRules/decisionFeature/create', data)
+        return await self.post('v2/customRules/decisionFeature/create', data)
 
     # TODO
     async def update_custom_rule(self, data):
         '''Updates an existing custom detection rule.
         '''
-        return await self.post('customRules/decisionFeature/update', data)
+        return await self.post('v2/customRules/decisionFeature/update', data)
 
     async def get_custom_rule_history(self, rule_id: int) -> 'List[Dict[str, Any]]':
-        resp = await self.get(f'customRules/history/{rule_id}')
+        resp = await self.get(f'v2/customRules/history/{rule_id}')
         if not resp['history']:
             raise ResourceNotFoundError(rule_id)
         return resp['history']

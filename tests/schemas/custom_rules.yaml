@@ -1,0 +1,32 @@
+custom_rules:
+  type: array
+  items:
+    type: object
+    properties:
+      id: { type: string, pattern: '^\d{15,16}$' }
+      name: { type: string }
+      rootCause: { enum: [ self, imageFile, parentProcess ] }
+      malopDetectionType: *MalopDetectionType
+      rule:
+        type: object
+        properties:
+          parentId: { type: string, pattern: '^\d{15,16}$' }
+          root: { type: object }  # TODO
+          malopActivityType: *MalopActivityType
+      description: { type: string }
+      groupingFeatures:
+        oneOf:
+          - { type: array, items: { type: string }}
+          - { type: 'null' }
+      enabled: { type: boolean }
+      userName:  { type: string, format: email }
+      creationTime: { type: integer }
+      updateTime: { type: integer }
+      lastTriggerTime: { type: [ integer, 'null' ]}
+      autoRemediationActions:
+        type: object
+        properties:
+          killProcess: { type: boolean }
+          quarantineFile:  { type: boolean }
+          isolateMachine:  { type: boolean }
+      autoRemediationErrorMessage: { type: [ string, 'null' ] }

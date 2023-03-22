@@ -26,10 +26,10 @@ MalopInboxModel: &MalopInbox
     rootCauseElementType: { enum: [ File, Process, Module, IpAddress ] }
     primaryRootCauseName: { type: string }
     rootCauseElementNamesCount: { type: integer }
-    detectionEngines: { type: array, items: { enum: [ AntiExploit, AntiVirus, ApplicationControl, Document, EDR, RulesEngine, Script, StaticAnalysis ] } }
+    detectionEngines: { type: array, items: { enum: [ AntiExploit, AntiVirus, ApplicationControl, Document, EDR, RulesEngine, Script, StaticAnalysis, Mobile, Ransomware ] } }
     detectionTypes: { type: array, items: { type: string } }
-    malopDetectionType: { enum: [ BLACKLIST, CNC, UNKNWOWN, MALICIOUS_PROCESS, PHISHING, KNOWN_MALWARE, CUSTOM_RULE ] }
-    malopType: { enum: [ BLACKLIST, CNC, UNKNWOWN, MALICIOUS_PROCESS, PHISHING, KNOWN_MALWARE, CUSTOM_RULE ] }
+    malopDetectionType: *MalopDetectionType
+    malopType: *MalopDetectionType
     creationTime: { type: integer }
     lastUpdateTime: { type: integer }
     iconBase64:

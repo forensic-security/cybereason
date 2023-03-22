@@ -1,4 +1,4 @@
-from typing import Optional, Any, TYPE_CHECKING
+from typing import Optional, Union, Any, TYPE_CHECKING, cast
 from pathlib import Path
 from os import PathLike
 import logging
@@ -13,7 +13,7 @@ from .exceptions import (
 from ._typing import CybereasonProtocol
 
 if TYPE_CHECKING:
-    from typing import AsyncIterator, Dict, List, Union
+    from typing import AsyncIterator, Dict, List
     from ._typing import SensorId
     from .utils import Unset
 
@@ -306,7 +306,7 @@ class SensorsMixin(CybereasonProtocol):
         '''Creates, modifies or delete tags for a specific sensor or
         group of sensors. To delete a tag set the value to ``None``.
         '''
-        tags: 'Dict[str, Union[str, bool]]' = dict()
+        ops: 'Dict[str, Dict[str, Union[str, bool]]]' = dict()
 
         for name, value, typ in (
             ('department',     department,     str),
@@ -317,16 +317,16 @@ class SensorsMixin(CybereasonProtocol):
         ):
             if value is not unset:
                 if value is None:
-                    tags[name] = {'operation': 'REMOVE'}
+                    ops[name] = {'operation': 'REMOVE'}
                 elif isinstance(value, typ):
                     if typ == str and len(value) > 100:  # type: ignore
-                        err = f'The maximum length for the {name!r} tag is 100 characters'
-                        raise ValueError(err)
-                    tags[name] = {'operation': 'SET', 'value': value}
+                        msg = f'The maximum length for the {name!r} tag is 100 characters'
+                        raise ValueError(msg)
+                    ops[name] = {'operation': 'SET', 'value': cast(Union[str, bool], value)}
                 else:
                     raise TypeError(f'{name!r} tag must be a {typ.__name__!r}')
 
-        data = {'entities': {pylum_id: {'tags': tags, 'entityType': 'MACHINE'}}}
+        data = {'entities': {pylum_id: {'tags': ops, 'entityType': 'MACHINE'}}}
         resp = await self.post('tagging/process_tags', data)
         resp = resp['entities'][pylum_id]['results']
 

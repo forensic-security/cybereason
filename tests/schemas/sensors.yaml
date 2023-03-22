@@ -190,7 +190,7 @@ sensors:
       serverIp: { type: string, format: ipv4 }
       privateServerIp: { type: string, format: ipv4 }
       collectiveUuid: { type: string, format: uuid }
-      osType: { enum: [ LINUX, OSX, WINDOWS ] }
+      osType: { enum: [ LINUX, OSX, WINDOWS, UNKNOWN_OS ] }
       osVersionType: { type: string }
       collectionStatus: { enum: [ DISABLED, ADVANCED, ENABLED, SUSPENDED ] }
       version: { type: string }
