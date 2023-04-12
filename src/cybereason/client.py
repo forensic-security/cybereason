@@ -121,6 +121,9 @@ class Cybereason(
         if 'error' in str(resp.url):
             await self.session.aclose()
             raise AuthenticationError('Invalid credentials')
+        elif 'reset' in str(resp.url):
+            await self.session.aclose()
+            raise AuthenticationError('Expired password')
 
         if 'Two factor authentication' in resp.text:
             if not self.totp_code:
@@ -158,6 +161,7 @@ class Cybereason(
         if 'session_sage' in self.__dict__:
             await self.session_sage.aclose()
 
+    @staticmethod
     async def gather_limit(num, *tasks):
         '''Limits concurrency.
 

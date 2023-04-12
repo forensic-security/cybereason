@@ -40,6 +40,12 @@ def config():
             f'to run the tests: {r}'
         )
 
+    if 'timeout' in config:
+        try:
+            config['timeout'] = float(config['timeout'])
+        except ValueError:
+            config['timeout'] = None
+
     return config
 
 
