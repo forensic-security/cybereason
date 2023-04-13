@@ -1,9 +1,13 @@
 from typing import TYPE_CHECKING, Optional
+import logging
 
 if TYPE_CHECKING:
     from typing import Union, AsyncIterator, Callable, Awaitable, TypeVar
 
     F = TypeVar('F', bound=Callable[..., Union[AsyncIterator, Awaitable]])
+
+
+log = logging.getLogger(__name__)
 
 
 class CybereasonException(Exception):
@@ -56,6 +60,48 @@ class ServiceDisabled(ServerError):
 
 class ConnectionError(CybereasonException):
     ...
+
+
+# response errors
+class ResponseError(CybereasonException):
+    ...
+
+
+class Failure(ResponseError):
+    ...
+
+
+class PartialSuccess(ResponseError):
+    ...
+
+
+class NoServersConfigured(ResponseError):
+    ...
+
+
+class QueryLimitCrossed(ResponseError):
+    ...
+
+
+class TimeoutError(ResponseError):
+    ...
+
+
+RESPONSE_ERRORS = {
+    'FAILURE':               Failure,
+    'PARTIAL_SUCCESS':       PartialSuccess,
+    'NO_SERVERS_CONFIGURED': NoServersConfigured,
+    'QUERY_LIMIT_CROSSED':   QueryLimitCrossed,
+    'TIMEOUT_ERROR':         TimeoutError,
+}
+
+
+def get_response_error(status):
+    exc = RESPONSE_ERRORS.get(status)
+    if exc is None:
+        log.warning('Unknown response status: %r', status)
+        return ResponseError
+    return exc
 
 
 def _add_to_doc(doc: Optional[str], text: str) -> str:

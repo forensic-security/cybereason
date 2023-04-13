@@ -18,7 +18,7 @@ flake8
 mypy src/cybereason
 
 # testing
-export CYBEREASON_SERVER=<server>
+export CYBEREASON_TENANT=<tenant>
 export CYBEREASON_USERNAME=<username>
 export CYBEREASON_PASSWORD=<password>
 # export also CYBEREASON_PROXY if needed
@@ -39,7 +39,7 @@ pytest
 - `nest_asyncio`
 
    Needed to _unasync_ some properties (like in `SystemMixin.version`) through nested
-   loop events. This feature was initially rejected by GVM but [there is a chance that
+   loop events. This feature was initially rejected by GvR but [there is a chance that
    it will be implemented][2]. Remove the dependency if this is the case.
   
 - `socksio`

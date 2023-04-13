@@ -11,7 +11,7 @@ MachineInboxModel: &MachineInbox
     empty: { type: boolean }
 
 UserInboxModel: &UserInbox
-  guid: { type: string, pattern: '^[A-Za-z0-9_-]{16}$' }
+  guid: *CrGuid
   displayName: { type: string }
   admin: { type: boolean }
   localSystem: { type: boolean }
@@ -21,7 +21,7 @@ MalopInboxModel: &MalopInbox
   type: object
   properties:
     '@class': { const: .MalopInboxModel }
-    guid: { type: string, pattern: '^[A-Za-z0-9_-]{16}$' }
+    guid: *CrGuid
     displayName: { type: string }
     rootCauseElementType: { enum: [ File, Process, Module, IpAddress ] }
     primaryRootCauseName: { type: string }
@@ -62,3 +62,17 @@ MalopInboxModel: &MalopInbox
 malops:
   type: array
   items: *MalopInbox
+
+status:
+  type: object
+  properties:
+    guid: *CrGuid
+    malopLabels: { type: array, items: { type: integer }}
+    status: { enum: [ CLOSED, FP, OPEN, REOPEN, RESOLVED, TODO, UNREAD ] }
+    malopPriority: { type: string }  # TODO: enum [UNSPECIFIED, ...]
+    investigationStatus: { enum: [ Closed, OnHold, Pending, Reopened, UnderInvestigation ] }
+    closerName: { oneOf: [ { type: string, format: email }, { type: 'null'} ] }
+    closeTime: { type: [ integer, 'null' ] }
+    version: { type: integer }
+    lastUpdated: { type: integer }
+    empty: { type: boolean }

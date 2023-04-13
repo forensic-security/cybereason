@@ -1,14 +1,26 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 import pytest_asyncio
 
 
-@pytest.mark.asyncio
-async def test_get_malops(client, validate):
+@pytest_asyncio.fixture(scope='module')
+async def malops(client, validate):
+    '''Also tests get_malops.
+    '''
     start = datetime.utcnow() - timedelta(days=30)
-    resp = await client.get_malops(start, date.today())
+    resp = await client.get_malops(start)
     validate(resp, 'malops')
+    return resp
+
+
+@pytest.mark.asyncio
+async def test_get_malop_status(client, malops, validate):
+    guids = [x['guid'] for x in malops[:50]]
+    tasks = (client.get_malop_status(i) for i in guids)
+    resp = await client.gather_limit(5, *tasks)
+    for status in resp:
+        validate(status, 'status')
 
 
 # region LABELS

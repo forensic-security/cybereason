@@ -13,9 +13,10 @@ from httpx import AsyncClient, HTTPStatusError, ConnectError
 
 from .exceptions import (
     AccessDenied, AuthenticationError, ResourceNotFoundError,
-    UnauthorizedRequest, CybereasonException, ServerError, ClientError,
+    UnauthorizedRequest, ServerError, ClientError,
+    get_response_error,
 )
-from .utils import get_filename, to_list
+from .utils import get_filename, to_list, get_config_from_env, parse_query_response
 from .custom_rules import CustomRulesMixin
 from .incident_reponse import IncidentResponseMixin
 from .malops import MalopsMixin
@@ -47,14 +48,14 @@ class Cybereason(
 ):
     def __init__(
         self,
-        server:    str,
+        tenant:    str,
         username:  str,
         password:  str,
         proxy:     Optional[str] = None,
         totp_code: Optional[str] = None,
         timeout:   float = DEFAULT_TIMEOUT,
     ):
-        self.server = server.split('.')[0]
+        self.tenant = tenant.split('.')[0]
         self.username = username
         self.password = password
         self.proxy = proxy
@@ -65,7 +66,7 @@ class Cybereason(
     def session(self) -> AsyncClient:
         from . import __version__
 
-        base_url = f'https://{self.server}.cybereason.net'
+        base_url = f'https://{self.tenant}.cybereason.net'
         headers  = {
             'content-type': 'application/json',
             'user-agent': f'python-cybereason/{".".join(map(str, __version__))}',
@@ -111,7 +112,7 @@ class Cybereason(
         options = {'headers': headers, 'follow_redirects': True}
 
         auth = {'username': self.username, 'password': self.password}
-        log.debug('Logging %r in on %r', self.username, self.server)
+        log.debug('Logging %r in on %r', self.username, self.tenant)
 
         try:
             resp = await self.session.post('login.html', data=auth, **options)  # type: ignore
@@ -154,6 +155,13 @@ class Cybereason(
         if exc_type:
             raise exc_type(*to_list(exc_value))
 
+    @classmethod
+    def from_env(cls) -> 'Cybereason':
+        '''Retrieves class parameters from environment variables.
+        '''
+        config = get_config_from_env(cls)
+        return cls(**config)
+
     async def aclose(self) -> None:
         if 'session' in self.__dict__:
             await self.logout()
@@ -177,6 +185,13 @@ class Cybereason(
                 return await task
 
         return await asyncio.gather(*(run_task(task) for task in tasks))
+
+    def check_resp(self, resp):
+        if resp['status'] == 'SUCCESS':
+            return resp['data']
+        else:
+            exc = get_response_error(resp['status'])
+            raise exc(resp.get('message'))
 
     async def _request(
         self,
@@ -273,36 +288,30 @@ class Cybereason(
         extract:  bool = False,
     ) -> Path:
         filename, buffer = await self.raw_download(path, query=query)
-        unknown = False
         folder = Path(folder)
         folder.mkdir(exist_ok=True, parents=True)
 
-        if extract:
+        if extract and filename.endswith(('.zip', '.gz')):
             openfile: 'Callable[[Any], Union[TarFile, ZipFile]]'
-
             subfolder, ext = filename.rsplit('.', 1)
             if ext == 'zip':
                 import zipfile
                 openfile = lambda b: zipfile.ZipFile(b, mode='r')
-            elif ext == 'gz':
+            else:  # gz
                 import tarfile
                 openfile = lambda b: tarfile.open(fileobj=b, mode='r:gz')
-            else:
-                unknown = True
+
+            destpath = folder / subfolder
+            archive = openfile(buffer)
+            archive.extractall(path=destpath)
+            log.info('%s extracted into %s', filename, destpath)
+
+        else:
+            if extract:
                 log.warning('Unknown compression method: %s', filename)
 
-            if not unknown:
-                destpath = folder / subfolder
-                archive = openfile(buffer)
-                archive.extractall(path=destpath)
-                log.info('%s extracted into %s', filename, destpath)
-
-        if not extract or unknown:
             destpath = folder / filename
-
-            with open(folder / filename, 'wb') as f:
-                f.write(buffer.read())
-
+            destpath.write_bytes(buffer.read())
             log.info('%s saved as %s', filename, destpath)
 
         return destpath.resolve()
@@ -433,17 +442,20 @@ class Cybereason(
                 yield cefparse(line.decode())
 
     # https://nest.cybereason.com/documentation/api-documentation/all-versions/how-build-queries
-    async def query(self, data: 'Dict[str, Any]') -> 'Dict[str, Any]':
+    async def query(self, query: 'Dict[str, Any]', parsed: bool = True) -> 'Dict[str, Any]':
         # default since version 20.1.381
-        data.setdefault('perGroupLimit', 100)
-        if data['perGroupLimit'] > 1000:
-            data['perGroupLimit'] = 1000
+        query.setdefault('perGroupLimit', 100)
+        if query['perGroupLimit'] > 1000:
+            query['perGroupLimit'] = 1000
 
-        # log.debug('Running query %s', data)
-        resp = await self.post('visualsearch/query/simple', data)
-        if resp['status'] == 'FAILURE':
-            raise CybereasonException(resp['message'])
-        return resp['data']
+        # log.debug('Running query %s', query)
+        resp = await self.post('visualsearch/query/simple', query)
+        data = self.check_resp(resp)
+
+        if parsed is True:
+            return parse_query_response(data)
+        else:
+            return data
 
     # TODO: https://nest.cybereason.com/documentation/product-documentation/221/machine-timeline
     async def get_process_timeline(self, guid: str, minutes: int):

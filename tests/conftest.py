@@ -4,7 +4,6 @@ import logging
 import inspect
 import asyncio
 import sys
-import os
 
 import pytest
 import pytest_asyncio
@@ -18,35 +17,6 @@ from cybereason import Cybereason
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-@pytest.fixture(scope='session')
-def config():
-    config = dict()
-    required = list()
-
-    for name, param in inspect.signature(Cybereason)._parameters.items():
-        if param.default is param.empty:
-            required.append(name)
-        try:
-            config[name] = os.environ[f'cybereason_{name}'.upper()]
-        except KeyError:
-            pass
-
-    if not all(x in config for x in required):
-        r = ', '.join(f"'CYBEREASON_{p.upper()}'" for p in required)
-        raise RuntimeError(
-            'You need to set at least the following environment variables '
-            f'to run the tests: {r}'
-        )
-
-    if 'timeout' in config:
-        try:
-            config['timeout'] = float(config['timeout'])
-        except ValueError:
-            config['timeout'] = None
-
-    return config
 
 
 @pytest.fixture(scope='session')
@@ -66,7 +36,6 @@ def event_loop():
 def validate():
     from jsonschema import validate as val
     from yaml import safe_load
-    import inspect
 
     def tighten_schema(schema):
         if schema.get('type') == 'array':
@@ -99,8 +68,8 @@ def validate():
 
 
 @pytest_asyncio.fixture(scope='session')
-async def client(config):
-    async with Cybereason(**config) as client:
+async def client():
+    async with Cybereason.from_env() as client:
         yield client
 
 

@@ -29,7 +29,7 @@ import json
 async def dump_policies_config():
     '''Save metadata and config for every policy.
     '''
-    async with Cybereason(<server>, <username>, <password>) as client:
+    async with Cybereason(<tenant>, <username>, <password>) as client:
         async for policy in client.get_policies(show_config=True):
             filename = f'{policy["metadata"]["name"]}.json'
             with open(filename, 'w') as f:
@@ -45,7 +45,7 @@ import asyncio
 import json
 
 async def user_audit():
-    async with Cybereason(<server>, <username>, <password>) as client:
+    async with Cybereason(<tenant>, <username>, <password>) as client:
         # rotated=False to get only the latest logs
         logs = [log async for log in client.get_user_audit_logs(rotated=True)]
         with open('user_audit.json', 'w') as f:

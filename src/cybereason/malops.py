@@ -2,7 +2,8 @@ from datetime import datetime, date, timezone
 from typing import TYPE_CHECKING
 import logging
 
-from .exceptions import CybereasonException, authz, min_version
+from .exceptions import authz, min_version
+from .utils import parse_query_response
 from ._typing import CybereasonProtocol
 
 if TYPE_CHECKING:
@@ -46,7 +47,7 @@ class MalopsMixin(CybereasonProtocol):
         '''Get all malops currently active.
         '''
 
-        data = {
+        payload = {
             'totalResultLimit': 10000,
             'perGroupLimit':    10000,
             'perFeatureLimit':  100,
@@ -56,15 +57,13 @@ class MalopsMixin(CybereasonProtocol):
         }
 
         for req_type in ('MalopProcess', 'MalopLogonSession'):
-            data['queryPath'][0]['requestedType'] = req_type  # type: ignore
+            payload['queryPath'][0]['requestedType'] = req_type  # type: ignore
 
-            resp = await self.post('crimes/unified', data)
+            resp = await self.post('crimes/unified', payload)
+            data = self.check_resp(resp)
 
-            if not resp['status'] == 'SUCCESS':
-                raise CybereasonException(resp['message'])
-
-            for malop in resp['data']['resultIdToElementDataMap'].values():
-                yield malop
+            for malop in data['resultIdToElementDataMap'].values():
+                yield parse_query_response(malop)
 
     # TODO: retrieve details for Auto Hunt Malops
     # TODO: endpoint fails
@@ -75,16 +74,13 @@ class MalopsMixin(CybereasonProtocol):
     #     data = {'malopGuid': malop_id}
     #     return await self.post('detection/details', data)
 
+    async def get_malop_status(self, malop_id: 'MalopId') -> 'Dict[str, Any]':
+        resp = await self.get(f'mmng/v2/malops/metadata/{malop_id}')
+        return self.check_resp(resp)
+
     async def has_malop_history(self, malop_id: 'MalopId') -> bool:
         data = {'guids': [malop_id], 'elementType': 'MalopProcess'}
         return await self.post('remediate/has-history', data)  # TODO: also bool if True?
-
-    @min_version(17, 5)
-    @authz('Analyst L1')
-    async def get_malware_alerts(self, filters=None) -> 'AsyncIterator[Any]':
-        data = {'filters': filters or [], 'sortingFieldName': 'timestamp'}
-        async for alert in self.aiter_pages('malware/query', data, key='malwares'):
-            yield alert
 
     async def get_malop_comments(
         self, malop_id: 'MalopId',
@@ -95,6 +91,13 @@ class MalopsMixin(CybereasonProtocol):
         for msg in resp:
             msg['message'] = unescape(msg['message'])
         return resp
+
+    @min_version(17, 5)
+    @authz('Analyst L1')
+    async def get_malware_alerts(self, filters=None) -> 'AsyncIterator[Any]':
+        data = {'filters': filters or [], 'sortingFieldName': 'timestamp'}
+        async for alert in self.aiter_pages('malware/query', data, key='malwares'):
+            yield alert
 
 # region LABELS
     @min_version(20, 1, 43)

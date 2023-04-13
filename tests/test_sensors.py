@@ -26,3 +26,9 @@ async def test_get_policies(client, validate):
     # TODO: validate `show_config=False`
     policies = [x async for x in client.get_policies(show_config=True)]
     validate(policies, 'policies')
+
+
+@pytest.mark.asyncio
+async def test_get_groups(client, validate):
+    groups = await client.get_groups()
+    validate(groups, 'groups')
