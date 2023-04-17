@@ -67,7 +67,7 @@ RegistryInclusion: &RegistryInclusion
     modifiedBy:
       anyOf:
       - { type: string, format: email }
-      - { const: 'Cybereason' }
+      - { const: Cybereason }
     lastModified: { type: integer }
     description: { type: string }
     depth: { type: boolean }
@@ -106,11 +106,11 @@ policies:
             type: object
             properties:
               enabled: { type: boolean }
-              signatureMode: { enum: [ BLOCK, DETECT ] }
-              documentProtectionMode: { enum: [ DETECT, PREVENT ] }
-              documentProtectionSensitivityLevel: { enum: [ CAUTIOUS ] }
+              signatureMode: { enum: [ BLOCK, DETECT, DISABLED ] }
+              documentProtectionMode: { enum: [ DETECT, DISABLED, PREVENT ] }
+              documentProtectionSensitivityLevel: { enum: [ CAUTIOUS, MODERATE ] }
               documentProtectionExclusions: { type: array }  # TODO
-              detectMode: { enum: [ 2, 3 ] }
+              detectMode: { enum: [ 1, 2, 3 ] }
               preventMode: { enum: [ 1, 2 ] }
               quarantineMaliciousFiles: { type: boolean }
               scanDllFiles: { type: boolean }
@@ -246,7 +246,7 @@ sensors:
       externalIpAddress: { type: string, format: ipv4 }
       siteName: { type: string }
       siteId: { type: integer }
-      ransomwareStatus: { enum: [ DISABLED, DETECT_AND_SUSPEND, DETECT_SUSPEND_PREVENT, UNKNOWN ] }
+      ransomwareStatus: { enum: [ DETECT_AND_SUSPEND, DETECT_ONLY, DETECT_SUSPEND_PREVENT, DISABLED, UNKNOWN ] }
       preventionStatus: { enum: [ NOT_INSTALLED, DISABLED, ENABLED, UNKNOWN ] }
       isolated: { type: boolean }
       disconnectionTime: { type: integer }
@@ -287,9 +287,9 @@ sensors:
       remoteShellStatus: { enum: [ AC_ENABLED, AC_DISABLED ] }
       usbStatus: { enum: [ DISABLED ] }
       fwStatus: { enum: [ DISABLED ] }
-      antiExploitStatus: { enum: [ '', AE_DISABLED, AE_CAUTIOUS, AE_UNKNOWN ] }
-      documentProtectionStatus: { enum: [ '', DS_PREVENT, DS_UNKNOWN, DS_DETECT, DS_DISABLED ] }
-      documentProtectionMode: { enum: [ '', DM_UNKNOWN, DM_CAUTIOUS ] }
+      antiExploitStatus: { enum: [ '', AE_CAUTIOUS, AE_DISABLED, AE_ENABLED, AE_UNKNOWN ] }
+      documentProtectionStatus: { enum: [ '', DS_DETECT, DS_DISABLED, DS_PREVENT, DS_UNKNOWN ] }
+      documentProtectionMode: { enum: [ '', DM_CAUTIOUS, DM_MODERATE, DM_UNKNOWN ] }
       serialNumber: { type: string }
       deviceModel: { type: string }
       organizationalUnit: { type: string }
@@ -302,7 +302,7 @@ sensors:
       exitReason: { enum: [ STOP_REQUEST_FROM_PYLUM ] }
       actionsInProgress: { type: integer }
       pendingActions: { type: array }  # TODO
-      lastUpgradeResult: { enum: [ AlreadyUpdated, Failed, None, NewPackageDownloaded, Succeeded, Uninstalled ] }
+      lastUpgradeResult: { enum: [ AlreadyUpdated, Failed, InvalidCertificate, NewPackageDownloaded, None, Succeeded, Uninstalled ] }
       department: { type: [ string, 'null' ] }
       location: { type: [ string, 'null' ] }
       criticalAsset: { type: [ boolean, 'null' ] }
@@ -313,7 +313,7 @@ sensors:
         items:
           type: object
           properties:
-            name: { enum: [AlreadyUpdated, Failed, InProgress, NewPackageDownloaded, SendingMsi, Started, Succeeded, Uninstalled ] }
+            name: { enum: [AlreadyUpdated, Failed, InProgress, InvalidCertificate, MsiSendFail, NewPackageDownloaded, SendingMsi, Started, Succeeded, Uninstalled ] }
             startTime: { type: integer }
       disconnected: { type: boolean }
       staticAnalysisDetectMode: { enum: [ CAUTIOUS, DISABLED, MODERATE, UNKNOWN ] }
@@ -363,14 +363,14 @@ group: &group
         - { type: 'null' }
         - type: object
           properties:  # TODO
-            ruleType: { enum: [ externalIpAddress, machineName, organization ] }
+            ruleType: { enum: [ externalIpAddress, machineName, organization, organizationalUnit ] }
             ruleOperator: { enum: [ ContainsIgnoreCase, EqualsIgnoreCase ]}
             ruleValues: { type: array, items: { type: string }}
     policyId:
       anyOf:
         - { type: string, format: uuid }
         - { const: '' }
-    priority: { type: 'null' }
+    priority: { type: [ 'null', integer ] }
 
 groups:
   type: array

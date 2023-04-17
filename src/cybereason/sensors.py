@@ -4,18 +4,17 @@ from os import PathLike
 import logging
 import asyncio
 
-from .utils import to_list, unset, get_filename
+from .utils import to_list, get_filename
 from .exceptions import (
     AccessDenied, ServerError, ClientError,
     ResourceExistsError, ResourceNotFoundError,
     authz, min_version,
 )
-from ._typing import CybereasonProtocol
+from ._typing import CybereasonProtocol, unset
 
 if TYPE_CHECKING:
     from typing import AsyncIterator, Dict, List
-    from ._typing import SensorId
-    from .utils import Unset
+    from ._typing import SensorId, Unset, Unforced
 
 
 log = logging.getLogger(__name__)
@@ -27,27 +26,22 @@ class SensorsMixin(CybereasonProtocol):
         self,
         *, archived: bool = True,
         filters:     'Optional[List[Any]]' = None,
-        page_size:   Optional[int] = None,  # TODO
     ) -> 'AsyncIterator[Dict[str, Any]]':
         '''Returns details on all or a selected group of sensors.
 
         Args:
             archived: show archived sensors.
         '''
-        filters = filters or []
+        data = {'filters': filters or []}
+
         if not archived:
-            filters.append({
+            data['filters'].append({
                 'fieldName': 'status',
-                'operator': 'NotEquals',
-                'values': ['Archived'],
+                'operator':  'NotEquals',
+                'values':    ['Archived'],
             })
 
-        async for sensor in self.aiter_pages(
-            'sensors/query',
-            data={'filters': filters},
-            key='sensors',
-            # page_size=page_size,
-        ):
+        async for sensor in self.aiter_pages('sensors/query', data, 'sensors'):
             yield sensor
 
     @authz('System Admin')
@@ -175,10 +169,10 @@ class SensorsMixin(CybereasonProtocol):
     async def edit_group(
         self,
         group_id:    str,
-        name:        'Union[Unset, str]' = unset,
-        description: 'Union[Unset, str]' = unset,
-        rules:       'Union[Unset, List[Dict[str, Any]]]' = unset,
-        policy_id:   'Union[Unset, str]' = unset,
+        name:        'Unforced[str]' = unset,
+        description: 'Unforced[str]' = unset,
+        rules:       'Unforced[List[Dict[str, Any]]]' = unset,
+        policy_id:   'Unforced[str]' = unset,
     ) -> 'Any':
         '''Edits the details of an existing sensor group.
         '''

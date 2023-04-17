@@ -1,18 +1,72 @@
 from typing import TYPE_CHECKING, Any
+from functools import cached_property
 from ipaddress import ip_address
+from datetime import datetime
 from pathlib import Path
 from os import PathLike
 import hashlib
+import asyncio
 
 from ._typing import CybereasonProtocol
 
 if TYPE_CHECKING:
-    from typing import AsyncIterator, Dict, List, Optional
+    from typing import AsyncIterator, Dict, List, Optional, Literal
 
 
 class ThreatIntelligenceMixin(CybereasonProtocol):
 
 # region QUERIES
+    @cached_property
+    def reputation_list(self):
+        async def replist():
+            url = 'dynamic/v1/ti-reputation/api/v1/entity/lists/default'
+            return await self.get(url)
+        return asyncio.run(replist())
+
+    # async def get_custom_reputations(
+    #     self,
+    #     included_expired: bool = False,
+    # ) -> 'AsyncIterator[Dict[str, Any]]':
+    #     '''Returns a list of custom reputations for files, IP addresses,
+    #     and domain names.
+    #     '''
+    #     url = 'classification/reputations/list'
+    #     data = {'filter': {'includeExpired': included_expired}}
+    #     async for x in self.aiter_items(url, data, 'reputations', check_resp=True):
+    #         yield x
+
+    async def get_reputations(self) -> 'AsyncIterator[Dict[str, Any]]':
+        url = f'dynamic/v1/ti-reputation/api/v1/lists/{self.reputation_list}/reputations/search'
+        async for x in self.aiter_items(url, {}, 'reputations', pagination=True):
+            yield x
+
+    async def update_reputation(
+        self,
+        id:         int,
+        *, comment: str,
+        action:     'Literal["ALLOW", "DENY"]',
+        keys:       'List[Dict[str, str]]',
+        groups:     'Optional[List[str]]' = None,
+        expiration: 'Optional[datetime]' = None,
+    ) -> 'Dict[str, Any]':
+        '''
+        Args:
+            groups: ``None`` means "Global".
+        '''
+        data = {
+            'comment':          comment,
+            'action':           action,
+            'keys':             keys,
+            'groupIds':         groups,
+            'reputationListId': 24
+        }
+        # TODO: remove expiration?
+        if expiration is not None:
+            data['expiresAt'] = int(expiration.timestamp() * 1000)
+
+        url = f'dynamic/v1/ti-reputation/api/v1/lists/{self.reputation_list}/reputations/{id}'
+        return await self.put(url, data)
+
     async def get_file_reputation(self, path: PathLike, use_sha1: bool = True) -> Any:
         '''Returns details on a file’s reputation based on the threat
         intelligence service.
@@ -133,30 +187,4 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
         from warnings import warn
         warn("'get_domain_reputations' is deprecated", DeprecationWarning)
         return await self.post_sage('download_v1/domain_reputation', {})
-
-    # XXX: broken: commas not escaped, `None` and `` in boolean fields...
-    async def get_reputations(
-        self,
-        reputation: 'Optional[str]' = None,
-    ) -> 'AsyncIterator[Dict[str, Any]]':
-        '''Returns a list of custom reputations for files, IP addresses,
-        and domain names.
-
-        Args:
-            reputation: 'blacklist' or 'whitelist'.
-        '''
-        from .utils import parse_csv
-
-        # TODO: could be reputation filtered in the query?
-        csv = await self.get('classification/download')
-
-        for item in parse_csv(
-            csv,
-            boolean=['prevent execution', 'remove'],
-            optional=['comment'],
-        ):
-            if not reputation:
-                yield item
-            elif item['reputation'] == reputation:
-                yield item
 # endregion

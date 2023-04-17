@@ -30,13 +30,61 @@ collections_details:
             type: array
             items: { type: string }
 
+_BaseRepProps: &_BaseRepProps
+  isBlocking: { type: boolean }
+  maliciousType: { enum: [ blacklist, whitelist ] }
+  comment: { type: [ string, 'null' ] }
+  expiration: { type: integer }
+  owningUser: { type: string, format: email }
+  firstSeen: { type: integer }
+  lastUpdated: { type: integer }
+
+_FileRepProps: &_FileRepProps
+  key: { type: string, pattern: '^[0-9a-f]{32,40,64}$' }  # MD5, SHA1, SHA256
+  lookupKeyType: { enum: [ FILE_HASH_MD5, FILE_HASH_SHA1, FILE_HASH_SHA256 ] }
+
+_IpRepProps: &_IpRepProps
+  key: { type: string, format: [ ipv4, ipv6] }
+  lookupKeyType: { enum: [ IPV4, IPV6 ] }
+
+_DomainRepProps: &_DomainRepProps
+  key: { type: string, format: idn-hostname }
+  lookupKeyType: { const: DOMAIN }
+
 reputations:
   type: array
   items:
-    type: object
-    properties:
-      comment: { type: [ string, 'null' ]}
-      key: { type: string }
-      prevent execution: { type: boolean }
-      remove: { type: boolean }
-      reputation: { enum: [ blacklist, whitelist ]}
+    oneOf:
+      type: object
+      properties:
+        reputationType: { enum: [ FILE ] }
+        <<: *_BaseRepProps
+        <<: *_FileRepProps
+        additionalKeys:
+          type: array
+          items:
+            type: object
+            properties:
+              <<: *_FileRepProps
+      type: object
+      properties:
+        reputationType: { enum: [ IP ] }
+        <<: *_BaseRepProps
+        <<: *_IpRepProps
+        additionalKeys:
+          type: array
+          items:
+            type: object
+            properties:
+              <<: *_IpRepProps
+      type: object
+      properties:
+        reputationType: { enum: [ DOMAIN ] }
+        <<: *_BaseRepProps
+        <<: *_DomainRepProps
+        additionalKeys:
+          type: array
+          items:
+            type: object
+            properties:
+              <<: *_DomainRepProps

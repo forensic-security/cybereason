@@ -14,9 +14,9 @@ async def test_get_collections_details(client, validate):
     validate(resp, 'collections_details')
 
 
-# XXX: broken
+# TODO
 # @pytest.mark.asyncio
-# async def test_get_reputations(client, validate):
-#     resp = [x async for x in client.get_reputations()]
+# async def test_get_custom_reputations(client, validate):
+#     resp = [x async for x in client.get_custom_reputations()]
 #     validate(resp, 'reputations')
 # endregion

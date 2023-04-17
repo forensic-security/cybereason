@@ -16,17 +16,6 @@ BOOL = {'true': True, 'false': False}
 NONE = {'null': None}
 
 
-class Unset:
-    def __bool__(self):
-        return False
-
-    def __contains__(self, o):
-        return False
-
-
-unset = Unset()
-
-
 def parse_csv(
     text:       str,
     *, boolean: 'List[str]' = [],
@@ -42,7 +31,7 @@ def parse_csv(
         yield item
 
 
-def to_list(obj: 'Any') -> 'List[Any]':
+def to_list(obj: 'Any') -> 'Iterable[Any]':
     if isinstance(obj, Iterator):
         return list(obj)
     elif isinstance(obj, Iterable):

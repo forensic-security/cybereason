@@ -13,7 +13,7 @@ from httpx import AsyncClient, HTTPStatusError, ConnectError
 
 from .exceptions import (
     AccessDenied, AuthenticationError, ResourceNotFoundError,
-    UnauthorizedRequest, ServerError, ClientError,
+    UnauthorizedRequest, ServerError, ClientError, CybereasonException, TooManyRequests,
     get_response_error,
 )
 from .utils import get_filename, to_list, get_config_from_env, parse_query_response
@@ -74,7 +74,7 @@ class Cybereason(
 
         if self.proxy and self.proxy.startswith('socks'):
             # https://github.com/encode/httpx/discussions/2305
-            # TODO: go back to socksio when ^ it's resolved
+            # TODO: go back to socksio when ^ is resolved
             # see: commit f439393
             try:
                 from httpx_socks import AsyncProxyTransport
@@ -187,11 +187,21 @@ class Cybereason(
         return await asyncio.gather(*(run_task(task) for task in tasks))
 
     def check_resp(self, resp):
-        if resp['status'] == 'SUCCESS':
-            return resp['data']
+        if 'status' in resp:
+            if resp['status'] == 'SUCCESS':
+                return resp['data']
+            else:
+                exc = get_response_error(resp['status'])
+                raise exc(resp.get('message'))
+        elif 'outcome' in resp:
+            if resp['outcome'] == 'success':
+                return resp['data']
+            else:
+                # TODO: same model?
+                exc = get_response_error(resp['outcome'].upper())
+                raise exc(resp['outcome'])
         else:
-            exc = get_response_error(resp['status'])
-            raise exc(resp.get('message'))
+            raise CybereasonException(resp)
 
     async def _request(
         self,
@@ -223,6 +233,8 @@ class Cybereason(
                 raise ServerError(e.response.text) from None
             elif e.response.status_code == 302:
                 raise AuthenticationError from None
+            elif e.response.status_code == 429:
+                raise TooManyRequests(e.response.text) from None
             raise
 
         if raw:
@@ -318,30 +330,74 @@ class Cybereason(
 
     async def aiter_pages(
         self,
-        path:          'UrlPath',
-        data:          Any,
-        key:           str,
-        page_size:     int = DEFAULT_PAGE_SIZE,
-        sort:          'Literal["ASC", "DESC"]' = 'ASC',
+        path:         'UrlPath',
+        data:         'Dict[str, Any]',
+        key:          str,
+        *, page_size: int = DEFAULT_PAGE_SIZE,
+        check_resp:   bool = False,
+        sort:         'Literal["ASC", "DESC"]' = 'ASC',
     ) -> 'AsyncIterator[Dict[str, Any]]':
+        '''
+        Args:
+            check_resp: ``True`` if the response returns either a
+                {status, data} or a {outcome, data} schema.
+        '''
         data = {**data, 'limit': page_size, 'offset': 0, 'sortDirection': sort}
 
         while True:
             resp = await self.post(path, data)
-            # XXX: not all results have the same schema
-            items = resp[key] if key in resp else resp['data'][key]
+            if check_resp is True:
+                resp = self.check_resp(resp)
 
-            for item in items:
+            for item in resp[key]:
                 yield item
 
-            # XXX: ditto
-            if 'hasMoreResults' in resp:
-                if not resp['hasMoreResults']:
-                    break
-            elif not resp['data']['hasMoreResults']:
+            if not resp['hasMoreResults']:
                 break
 
-            data['offset'] += 1  # XXX: page number
+            data['offset'] += 1  # page number
+
+    # some endpoints use a different pagination schema than `aiter_pages()``
+    async def aiter_items(
+        self,
+        path:           'UrlPath',
+        data:           'Dict[str, Any]',
+        key:            str,
+        *, page_size:   int = DEFAULT_PAGE_SIZE,
+        check_resp:     bool = False,
+        pagination:     bool = False,
+    ) -> 'AsyncIterator[Dict[str, Any]]':
+        '''
+        Args:
+            check_resp: ``True`` if the response returns either a
+                {status, data} or a {outcome, data} schema.
+            pagination: ``True`` if ``size`` and ``page`` go inside a
+                ``pagination`` object.
+        '''
+        if pagination:
+            data = {**data, 'pagination': {'size': page_size}}
+        else:
+            data = {**data, 'size': page_size}
+
+        page = 0
+
+        while True:
+            if pagination:
+                data['pagination']['page'] = page
+            else:
+                data['page'] = page
+
+            resp = await self.post(path, data)
+            if check_resp:
+                resp = self.check_resp(resp)
+
+            for item in resp[key]:
+                yield item
+
+            if len(resp[key]) < page_size:
+                break
+
+            page += 1
 
     async def post_sage(self, path, data):
         resp = await self.session_sage.post(path, json=data)
@@ -350,7 +406,7 @@ class Cybereason(
 
 # region ISOLATION RULES
     async def get_isolation_rules(self) -> 'List[Dict[str, Any]]':
-        '''Retrieve a list of isolation rules.
+        '''Retrieves a list of isolation rules.
         '''
         return await self.get('settings/isolation-rule')
 

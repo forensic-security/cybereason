@@ -49,10 +49,7 @@ class SystemMixin(CybereasonProtocol):
     async def get_registration_config(self):
         # XXX: returns detection servers
         resp = await self.get('settings/configuration/general/get-registration-config')
-        if resp['outcome'] == 'success':
-            return resp['data']
-        else:
-            raise ServerError(resp)
+        return self.check_resp(resp)
 
     async def get_investigation_config(
         self

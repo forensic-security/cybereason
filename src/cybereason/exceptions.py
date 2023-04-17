@@ -14,6 +14,10 @@ class CybereasonException(Exception):
     ...
 
 
+class ClientError(CybereasonException):
+    ...
+
+
 class UnauthorizedRequest(CybereasonException):
     def __init__(self, url: str, role: Optional[str] = None) -> None:
         if role:
@@ -34,7 +38,7 @@ class ServerError(CybereasonException):
     ...
 
 
-class ClientError(CybereasonException):
+class TooManyRequests(ClientError):
     ...
 
 
