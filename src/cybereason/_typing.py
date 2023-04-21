@@ -2,6 +2,8 @@ from typing import TYPE_CHECKING
 
 
 class Unset:
+    __slots__ = ()
+
     def __bool__(self):
         return False
 

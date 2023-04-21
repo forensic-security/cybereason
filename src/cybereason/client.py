@@ -4,6 +4,7 @@ from functools import cached_property
 from pathlib import Path
 from io import BytesIO
 import logging
+import asyncio
 
 # monkey-patch to allow multiple {'file-encoding': 'chunked'} headers
 import httpx
@@ -17,7 +18,7 @@ from .exceptions import (
     get_response_error,
 )
 from .utils import get_filename, to_list, get_config_from_env, parse_query_response
-from .custom_rules import CustomRulesMixin
+from .rules import CustomRulesMixin, IsolationRulesMixin
 from .incident_reponse import IncidentResponseMixin
 from .malops import MalopsMixin
 from .sensors import SensorsMixin
@@ -40,6 +41,7 @@ log = logging.getLogger(__name__)
 
 class Cybereason(
     CustomRulesMixin,
+    IsolationRulesMixin,
     IncidentResponseMixin,
     MalopsMixin,
     SensorsMixin,
@@ -212,6 +214,7 @@ class Cybereason(
         files:    'Query' = None,
         raw:      bool = False,
         raw_data: bool = False,
+        retried:  bool = False,
     ) -> Any:
         if raw_data:
             kwargs = dict(data=data, params=query, files=files)
@@ -234,8 +237,22 @@ class Cybereason(
             elif e.response.status_code == 302:
                 raise AuthenticationError from None
             elif e.response.status_code == 429:
-                raise TooManyRequests(e.response.text) from None
-            raise
+                # throttling
+                if retried is False:
+                    WAIT = 60
+
+                    log.warning('Too many requests. Waiting %i seconds...', WAIT)
+                    await asyncio.sleep(WAIT)
+
+                    if 'json' in kwargs:
+                        kwargs['data'] = kwargs.pop('json')
+                    kwargs['query'] = kwargs.pop('params')
+                    return await self._request(method, path, **kwargs,
+                        raw=raw, raw_data=raw_data, retried=True)
+                else:
+                    raise TooManyRequests(e.response.text) from None
+            else:
+                raise
 
         if raw:
             return resp.content
@@ -388,7 +405,7 @@ class Cybereason(
                 data['page'] = page
 
             resp = await self.post(path, data)
-            if check_resp:
+            if check_resp is True:
                 resp = self.check_resp(resp)
 
             for item in resp[key]:
@@ -404,77 +421,6 @@ class Cybereason(
         resp.raise_for_status()
         return resp.json()
 
-# region ISOLATION RULES
-    async def get_isolation_rules(self) -> 'List[Dict[str, Any]]':
-        '''Retrieves a list of isolation rules.
-        '''
-        return await self.get('settings/isolation-rule')
-
-    async def get_isolation_rule(self, id) -> 'Dict[str, Any]':
-        rules = await self.get_isolation_rules()
-        try:
-            return [r for r in rules if r['ruleId'] == id][0]
-        except IndexError:
-            raise ResourceNotFoundError(id) from None
-
-    async def create_isolation_rule(
-        self,
-        direction: str,
-        blocking:  bool,
-        ip:        str,  # TODO: validate
-        port:      Optional[int] = None,
-    ) -> 'Dict[str, Any]':
-        '''
-        Args:
-            direction: The direction of the allowed communication.
-                {'ALL', 'OUTGOING', 'INCOMING'}
-            blocking: States whether communication with the given IP or
-                port is allowed. If ``True`` communication is blocked.
-            ip: The IP address of the machine to which the rule applies.
-            port: The port by which Cybereason communicates with an
-                isolated machine, according to the rule.
-        '''
-        rule = {
-            'ruleId':          None,
-            'port':            port or '',
-            'ipAddressString': ip,
-            'blocking':        blocking,
-            'direction':       direction,
-        }
-        return await self.post('settings/isolation-rule', rule)
-
-    async def update_isolation_rule(
-        self,
-        id:           str,
-        *, direction: Optional[str] = None,
-        blocking:     Optional[bool] = None,
-        ip:           Optional[str] = None,
-        port:         Optional[int] = None,
-    ) -> 'Dict[str, Any]':
-        '''
-        Args:
-            id: rule ID.
-            port: ``0`` means any port.
-        '''
-        rule = await self.get_isolation_rule(id)
-        if direction is not None:
-            rule['direction'] = direction
-        if blocking is not None:
-            rule['blocking'] = blocking
-        if ip is not None:
-            rule['ipAddressString'] = ip or ''
-        if port is not None:
-            rule['port'] = port
-
-        return await self.put('settings/isolation-rule', rule)
-
-    async def delete_isolation_rule(self, id: str) -> None:
-        '''Deletes an isolation exception rule.
-        '''
-        rule = await self.get_isolation_rule(id)
-        await self.post('settings/isolation-rule/delete', rule)
-# endregion
-
     @cached_property
     def features_map(self) -> 'Dict[str, Dict[str, Any]]':
         import asyncio
@@ -484,7 +430,7 @@ class Cybereason(
 
         return asyncio.run(func())
 
-    async def get_user_audit_logs(self, rotated: bool = True) -> 'AsyncIterator[Dict]':
+    async def get_user_audit_logs(self, rotated: bool = True) -> 'AsyncIterator[Dict[str, Any]]':
         '''The User Audit log (aka Actions log) displays all user
         activity on the platform.
         '''
@@ -495,7 +441,8 @@ class Cybereason(
         async for content in extract_logfiles(archive, 'userAuditSyslog', rotated):
             # yield latest logs first
             for line in content.splitlines()[::-1]:
-                yield cefparse(line.decode())
+                if line is not None:
+                    yield cefparse(line.decode())  # type: ignore
 
     # https://nest.cybereason.com/documentation/api-documentation/all-versions/how-build-queries
     async def query(self, query: 'Dict[str, Any]', parsed: bool = True) -> 'Dict[str, Any]':

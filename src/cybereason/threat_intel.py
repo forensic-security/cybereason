@@ -58,7 +58,7 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
             'action':           action,
             'keys':             keys,
             'groupIds':         groups,
-            'reputationListId': 24
+            'reputationListId': self.reputation_list,
         }
         # TODO: remove expiration?
         if expiration is not None:

@@ -46,7 +46,6 @@ class MalopsMixin(CybereasonProtocol):
     async def get_active_malops(self, logon: bool = False) -> 'AsyncIterator[Dict[str, Any]]':
         '''Get all malops currently active.
         '''
-
         payload = {
             'totalResultLimit': 10000,
             'perGroupLimit':    10000,
@@ -113,8 +112,8 @@ class MalopsMixin(CybereasonProtocol):
 
     @min_version(20, 1, 43)
     async def add_malops_label(self, label: str) -> 'Label':
-        '''Add a new malop label to the list of labels available for use
-        to add to malops.
+        '''Adds a new malop label to the list of labels available for
+        use to add to malops.
         '''
         return await self.post('detection/add-label', {'labelText': label})
 

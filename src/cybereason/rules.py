@@ -4,7 +4,7 @@ from .exceptions import ResourceNotFoundError, authz
 from ._typing import CybereasonProtocol
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List
+    from typing import Any, Dict, List, Optional
 
 
 class CustomRulesMixin(CybereasonProtocol):
@@ -66,3 +66,75 @@ class CustomRulesMixin(CybereasonProtocol):
         if not resp['history']:
             raise ResourceNotFoundError(rule_id)
         return resp['history']
+
+
+class IsolationRulesMixin(CybereasonProtocol):
+
+    async def get_isolation_rules(self) -> 'List[Dict[str, Any]]':
+        '''Retrieves a list of isolation rules.
+        '''
+        return await self.get('settings/isolation-rule')
+
+    async def get_isolation_rule(self, id) -> 'Dict[str, Any]':
+        rules = await self.get_isolation_rules()
+        try:
+            return [r for r in rules if r['ruleId'] == id][0]
+        except IndexError:
+            raise ResourceNotFoundError(id) from None
+
+    async def create_isolation_rule(
+        self,
+        direction: str,
+        blocking:  bool,
+        ip:        str,  # TODO: validate
+        port:      'Optional[int]' = None,
+    ) -> 'Dict[str, Any]':
+        '''
+        Args:
+            direction: The direction of the allowed communication.
+                {'ALL', 'OUTGOING', 'INCOMING'}
+            blocking: States whether communication with the given IP or
+                port is allowed. If ``True`` communication is blocked.
+            ip: The IP address of the machine to which the rule applies.
+            port: The port by which Cybereason communicates with an
+                isolated machine, according to the rule.
+        '''
+        rule = {
+            'ruleId':          None,
+            'port':            port or '',
+            'ipAddressString': ip,
+            'blocking':        blocking,
+            'direction':       direction,
+        }
+        return await self.post('settings/isolation-rule', rule)
+
+    async def update_isolation_rule(
+        self,
+        id:           str,
+        *, direction: 'Optional[str]' = None,
+        blocking:     'Optional[bool]' = None,
+        ip:           'Optional[str]' = None,
+        port:         'Optional[int]' = None,
+    ) -> 'Dict[str, Any]':
+        '''
+        Args:
+            id: rule ID.
+            port: ``0`` means any port.
+        '''
+        rule = await self.get_isolation_rule(id)
+        if direction is not None:
+            rule['direction'] = direction
+        if blocking is not None:
+            rule['blocking'] = blocking
+        if ip is not None:
+            rule['ipAddressString'] = ip or ''
+        if port is not None:
+            rule['port'] = port
+
+        return await self.put('settings/isolation-rule', rule)
+
+    async def delete_isolation_rule(self, id: str) -> None:
+        '''Deletes an isolation exception rule.
+        '''
+        rule = await self.get_isolation_rule(id)
+        await self.post('settings/isolation-rule/delete', rule)
