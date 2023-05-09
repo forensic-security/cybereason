@@ -423,7 +423,11 @@ class SensorsMixin(CybereasonProtocol):
         extract:  bool = False,
     ) -> Path:
         '''
-        Returns the folder where the archive was downloaded or extracted.
+        Downloads a file from a sensor.
+
+        If ``extract`` is ``True`` returns the folder where the archive
+        was extracted. Otherwise returns the path where the archive was
+        downloaded.
         '''
         from io import BytesIO
 
@@ -459,8 +463,10 @@ class SensorsMixin(CybereasonProtocol):
             with AESZipFile(buffer, mode='r') as archive:
                 # TODO: add drive to target
                 archive.extractall(path=destdir, pwd=b'cautionhandlewithcare')
+
+            return destdir
         else:
             with open(destdir / filename, 'wb') as archive:
                 archive.write(buffer.read())
 
-        return destdir
+            return destdir / filename

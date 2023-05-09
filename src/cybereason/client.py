@@ -6,15 +6,11 @@ from io import BytesIO
 import logging
 import asyncio
 
-# monkey-patch to allow multiple {'file-encoding': 'chunked'} headers
-import httpx
-from ._patch import normalize_and_validate
-httpx._transports.default.httpcore._async.http11.h11._headers.normalize_and_validate = normalize_and_validate  # noqa: E501
 from httpx import AsyncClient, HTTPStatusError, ConnectError
 
 from .exceptions import (
-    AccessDenied, AuthenticationError, ResourceNotFoundError,
-    UnauthorizedRequest, ServerError, ClientError, CybereasonException, TooManyRequests,
+    AccessDenied, AuthenticationError, UnauthorizedRequest,
+    ServerError, ClientError, CybereasonException, TooManyRequests,
     get_response_error,
 )
 from .utils import get_filename, to_list, get_config_from_env, parse_query_response
@@ -26,7 +22,7 @@ from .system import SystemMixin
 from .threat_intel import ThreatIntelligenceMixin
 
 if TYPE_CHECKING:
-    from typing import AsyncIterator, Callable, Dict, List, Literal, Tuple, Union
+    from typing import AsyncIterator, Callable, Dict, Literal, Tuple, Union
     from io import BufferedIOBase
     from tarfile import TarFile
     from zipfile import ZipFile
@@ -89,6 +85,7 @@ class Cybereason(
                 headers=headers,
                 transport=AsyncProxyTransport.from_url(self.proxy),
                 timeout=self.timeout,
+                http2=True,
             )
 
         else:
@@ -97,6 +94,7 @@ class Cybereason(
                 headers=headers,
                 proxies=self.proxy,
                 timeout=self.timeout,
+                http2=True,
             )
 
     @cached_property
@@ -247,8 +245,9 @@ class Cybereason(
                     if 'json' in kwargs:
                         kwargs['data'] = kwargs.pop('json')
                     kwargs['query'] = kwargs.pop('params')
-                    return await self._request(method, path, **kwargs,
-                        raw=raw, raw_data=raw_data, retried=True)
+                    return await self._request(
+                        method, path, **kwargs, raw=raw, raw_data=raw_data, retried=True
+                    )
                 else:
                     raise TooManyRequests(e.response.text) from None
             else:
