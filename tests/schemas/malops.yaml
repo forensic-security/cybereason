@@ -35,7 +35,10 @@ MalopInboxModel: &MalopInbox
     iconBase64:
       type: string
       media: { binaryEncoding: base64, type: image/png }
-    priority: { enum: [ LOW, HIGH ] }
+    priority:
+      - oneOf:
+        - { type: 'null' }
+        - { enum: [ LOW, HIGH ] }
     malopPriority: { enum: [ LOW, HIGH ] }
     group: { type: string, format: uuid }
     rootCauseElementHashes: { type: string }
