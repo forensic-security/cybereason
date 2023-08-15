@@ -224,7 +224,7 @@ policies:
               level: { enum: [ MODERATE ] }
               maxDiscSpace: { type: integer }
               mbrEnabled: { type: boolean }
-              mode: { enum: [ DISABLED ] }
+              mode: { enum: [ DETECT, DISABLED ] }
               vssEnabled: { type: boolean }
           certificateExclusions:
             type: object
