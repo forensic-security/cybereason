@@ -1,4 +1,4 @@
-from typing import Any, Optional, TYPE_CHECKING, cast
+from typing import Any, Optional, Union, TYPE_CHECKING, cast
 from json.decoder import JSONDecodeError
 from functools import cached_property
 from pathlib import Path
@@ -6,7 +6,7 @@ from io import BytesIO
 import logging
 import asyncio
 
-from httpx import AsyncClient, HTTPStatusError, ConnectError
+from httpx import AsyncClient, HTTPStatusError, ConnectError, Timeout
 
 from .exceptions import (
     AccessDenied, AuthenticationError, UnauthorizedRequest,
@@ -51,7 +51,7 @@ class Cybereason(
         password:  str,
         proxy:     Optional[str] = None,
         totp_code: Optional[str] = None,
-        timeout:   float = DEFAULT_TIMEOUT,
+        timeout:   Union[float, Timeout] = DEFAULT_TIMEOUT,
     ):
         self.tenant = tenant.split('.')[0]
         self.username = username
