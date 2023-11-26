@@ -23,7 +23,7 @@ class UnauthorizedRequest(CybereasonException):
         if role:
             msg = f'You must have the {role} role'
         else:
-            msg = 'You don\'t have the role required'
+            msg = "You don't have the role required"
 
         super().__init__(f'{msg} to make a request to {url}.')
         self.url = url

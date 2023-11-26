@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union, TYPE_CHECKING, cast
+from typing import Any, Optional, TYPE_CHECKING, cast
 from json.decoder import JSONDecodeError
 from functools import cached_property
 from pathlib import Path
@@ -51,7 +51,7 @@ class Cybereason(
         password:  str,
         proxy:     Optional[str] = None,
         totp_code: Optional[str] = None,
-        timeout:   Union[float, Timeout] = DEFAULT_TIMEOUT,
+        timeout:   'Union[float, Timeout]' = DEFAULT_TIMEOUT,
     ):
         self.tenant = tenant.split('.')[0]
         self.username = username

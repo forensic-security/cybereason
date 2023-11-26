@@ -1,5 +1,6 @@
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 __pycache__/
 *.egg-info/
 build/
@@ -7,6 +8,7 @@ build/
 .venv/
 dist/
 docs/
+*.diff
 *.json
 test.*
 .env

@@ -12,7 +12,7 @@ To test your contributions, please follow these steps from the project root dir:
 
 ```sh
 # linting
-flake8
+ruff check .
 
 # static anlysis
 mypy src/cybereason
@@ -40,6 +40,10 @@ pytest
 
    Used due to a [bug in the `httpx`'s implementation of SOCKS5][2]. Change it when resolved.
 
+- `ruff`
+
+   Don't run `ruff format` until [docstrings with single quotes are allowed][3].
 
 [1]: https://bugs.python.org/issue22239
 [2]: https://github.com/encode/httpx/discussions/2305
+[3]: https://github.com/astral-sh/ruff/issues/7615

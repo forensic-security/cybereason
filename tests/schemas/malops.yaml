@@ -26,7 +26,7 @@ MalopInboxModel: &MalopInbox
     rootCauseElementType: { enum: [ File, Process, Module, IpAddress ] }
     primaryRootCauseName: { type: string }
     rootCauseElementNamesCount: { type: integer }
-    detectionEngines: { type: array, items: { enum: [ AntiExploit, AntiVirus, ApplicationControl, Document, EDR, RulesEngine, Script, StaticAnalysis, Mobile, Ransomware ] } }
+    detectionEngines: { type: array, items: { enum: [ AntiExploit, AntiVirus, ApplicationControl, Document, EDR, RulesEngine, Script, StaticAnalysis, Mobile, Ransomware, VariantPayloadProtection ] } }
     detectionTypes: { type: array, items: { type: string } }
     malopDetectionType: *MalopDetectionType
     malopType: *MalopDetectionType
@@ -68,7 +68,7 @@ status:
   properties:
     guid: *CrGuid
     malopLabels: { type: array, items: { type: integer }}
-    status: { enum: [ CLOSED, FP, OPEN, REOPEN, RESOLVED, TODO, UNREAD ] }
+    status: { enum: [ ACTIVE, CLOSED, FP, OPEN, REOPEN, RESOLVED, TODO, UNREAD ] }
     malopPriority: { type: string }  # TODO: enum [UNSPECIFIED, ...]
     investigationStatus: { enum: [ Closed, OnHold, Pending, Reopened, UnderInvestigation ] }
     closerName: { oneOf: [ { type: string, format: email }, { type: 'null'} ] }

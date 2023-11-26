@@ -107,14 +107,14 @@ policies:
           antiMalware:
             type: object
             properties:
-              detectMode: { enum: [ 1, 2, 3 ] }
+              detectMode: { enum: [ 1, 2, 3, 4 ] }
               disableUSNJournaling: { type: boolean }
               documentProtectionAIExclusions: { type: array } # TODO
-              documentProtectionAIMode: { enum: [ CAUTIOUS ] }
-              documentProtectionAIStatus: { enum: [ DISABLED ] }
+              documentProtectionAIMode: { enum: [ AGGRESSIVE, CAUTIOUS, MODERATE ] }
+              documentProtectionAIStatus: { enum: [ DETECT, DISABLED, PREVENT ] }
               documentProtectionExclusions: { type: array }  # TODO
               documentProtectionMode: { enum: [ DETECT, DISABLED, PREVENT ] }
-              documentProtectionSensitivityLevel: { enum: [ CAUTIOUS, MODERATE ] }
+              documentProtectionSensitivityLevel: { enum: [ AGGRESSIVE, CAUTIOUS, MODERATE ] }
               enabled: { type: boolean }
               exclusions: { type: array, items: *FileExclusion }
               fullScan: { type: object }  # TODO (like quickScan)
@@ -124,14 +124,14 @@ policies:
               limitFileExtensions: { type: boolean }
               localUpdateServerUrl: { const: '' }
               onAccessScan: { type: boolean }
-              preventMode: { enum: [ 1, 2 ] }
+              preventMode: { enum: [ 1, 2, 3, 4 ] }
               quarantineMaliciousFiles: { type: boolean }
               quickScan: { type: object }  # TODO
               quickScanEnabled: { type: boolean }
               quickScanMode: { enum: [ SCAN, SKIP ] }
               scanArchives: { type: boolean }
               scanDllFiles: { type: boolean }
-              signatureMode: { enum: [ BLOCK, DETECT, DISABLED ] }
+              signatureMode: { enum: [ BLOCK, DETECT, DISABLED, QUARANTINE ] }
               signerAllowlist: { type: array }  # TODO
               updateFrequencyIntervalMin: { type: integer }
               variantFilePreventionMode: { enum: [ VFP_MODE_DISABLED ] }
@@ -171,7 +171,7 @@ policies:
             type: object
             properties:
               enabled: { type: boolean }
-              antiExploitMode: { enum: [ CAUTIOUS, EXISTING ] }
+              antiExploitMode: { enum: [ AGGRESSIVE, CAUTIOUS, EXISTING ] }
               antiExploitExclusions:
                 type: array
                 items:
@@ -186,7 +186,17 @@ policies:
             type: object
             properties:
               enabled: { type: boolean }
-              flagValues: { type: array, items: { type: string }}
+              flagValues:
+                type: array
+                items:
+                  anyOf:
+                    - type: string
+                    - type: object
+                      properties:
+                        dataHash: { type: string }
+                        description: { type: string }
+                        lastModified: { type: integer }
+                        modifiedBy: { type: string, format: email }
           response:
             type: object
             properties:
@@ -221,10 +231,10 @@ policies:
               autoRestoreEnabled: { type: boolean }
               customShadowCopyEnabled: { type: boolean }
               drives: { type: array }
-              level: { enum: [ MODERATE ] }
+              level: { enum: [ AGGRESSIVE, CAUTIOUS, MODERATE ] }
               maxDiscSpace: { type: integer }
               mbrEnabled: { type: boolean }
-              mode: { enum: [ DETECT, DISABLED ] }
+              mode: { enum: [ DETECT, DISABLED, PREVENT ] }
               vssEnabled: { type: boolean }
           certificateExclusions:
             type: object
@@ -263,7 +273,7 @@ sensors:
       staleTimeMS: { type: integer }
       archiveTimeMs: { type: [ integer, 'null' ] }
       statusTimeMS: { type: integer }
-      lastStatusAction: { enum: [ Archive, None ] }
+      lastStatusAction: { enum: [ Archive, None, Unarchive ] }
       archivedOrUnarchiveComment: { type: [ string, 'null' ] }
       sensorArchivedByUser: { type: [ string, 'null' ] }
       serverName: { type: string }
@@ -281,7 +291,7 @@ sensors:
       cpuUsage: { type: number }
       memoryUsage: { type: integer }
       outdated: { type: boolean }
-      amStatus: { enum: [ AM_BLOCK, AM_DETECT_DISINFECT, AM_DETECT_ONLY, AM_FIRST_TIME_INITIALIZATION, AM_PRIOR_AV_ERROR, AM_UNINSTALLED, AM_UNKNOWN_ERROR, UNKNOWN ] }
+      amStatus: { enum: [ AM_BLOCK, AM_DETECT_DISINFECT, AM_DETECT_ONLY, AM_FIRST_TIME_INITIALIZATION, AM_PRIOR_AV_ERROR, AM_QUARANTINE, AM_UNINSTALLED, AM_UNKNOWN_ERROR, UNKNOWN ] }
       amModeOrigin: { type: [ string, 'null' ] }
       avDbVersion: { type: string }
       avDbLastUpdateTime: { type: integer }
@@ -291,9 +301,9 @@ sensors:
       remoteShellStatus: { enum: [ AC_ENABLED, AC_DISABLED ] }
       usbStatus: { enum: [ DISABLED ] }
       fwStatus: { enum: [ DISABLED ] }
-      antiExploitStatus: { enum: [ '', AE_CAUTIOUS, AE_DISABLED, AE_ENABLED, AE_UNKNOWN ] }
+      antiExploitStatus: { enum: [ '', AE_AGGRESSIVE, AE_CAUTIOUS, AE_DISABLED, AE_ENABLED, AE_UNKNOWN ] }
       documentProtectionStatus: { enum: [ '', DS_DETECT, DS_DISABLED, DS_PREVENT, DS_UNKNOWN ] }
-      documentProtectionMode: { enum: [ '', DM_CAUTIOUS, DM_MODERATE, DM_UNKNOWN ] }
+      documentProtectionMode: { enum: [ '', DM_AGGRESSIVE, DM_CAUTIOUS, DM_MODERATE, DM_UNKNOWN ] }
       serialNumber: { type: string }
       deviceModel: { type: string }
       organizationalUnit: { type: string }
@@ -320,9 +330,9 @@ sensors:
             name: *lastUpgradeResult
             startTime: { type: integer }
       disconnected: { type: boolean }
-      staticAnalysisDetectMode: { enum: [ CAUTIOUS, DISABLED, MODERATE, UNKNOWN ] }
+      staticAnalysisDetectMode: { enum: [ AGGRESSIVE, CAUTIOUS, DISABLED, MODERATE, UNKNOWN ] }
       staticAnalysisDetectModeOrigin: { enum: [ AWAITING_UPDATE, null ] }
-      staticAnalysisPreventMode: { enum: [ CAUTIOUS, DISABLED, UNKNOWN ] }
+      staticAnalysisPreventMode: { enum: [ AGGRESSIVE, CAUTIOUS, DISABLED, MODERATE, UNKNOWN ] }
       staticAnalysisPreventModeOrigin: { enum: [ AWAITING_UPDATE, null ] }
       collectionComponents: { type: array, items: { enum: [ DPI, Metadata, File Events, Registry Events ] }}
       sensorLastUpdate: { type: integer }
@@ -347,6 +357,7 @@ sensors:
       decommissionedByUser: { type: [ string, 'null' ] }
       decommissionTimestamp: { type: [ integer, 'null' ] }
       groupStickinessLabel: { enum: [ Dynamic, Manual ] }
+      uniqueSensorKey: { type: string }
 # endregion
 
 # region GROUPS

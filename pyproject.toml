@@ -1,0 +1,58 @@
+# https://docs.pytest.org/en/stable/reference/reference.html#ini-options-ref
+[tool.pytest.ini_options]
+log_cli = "true"
+log_cli_level = "INFO"
+log_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
+log_date_format = "%Y-%m-%d %H:%M:%S"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+norecursedirs = [
+    ".venv",
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+]
+asyncio_mode = "strict"
+
+# https://docs.astral.sh/ruff/settings/
+[tool.ruff]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".venv",
+    ".eggs",
+    "build",
+    "test.*",
+    "_typing.py",
+]
+ignore = [
+    "E115",
+    "E221",
+    "E241",
+    "E402",
+    "E731",
+    "Q001",  # double quotes for multiline strings
+    "Q002",  # double quotes for doctstrings
+]
+line-length = 99
+select = [
+    "C9",
+    "E",
+    "F",
+    "Q",
+    "W",
+]
+
+[tool.ruff.flake8-quotes]
+inline-quotes = "single"
+multiline-quotes = "single"
+docstring-quotes = "single"
+
+[tool.ruff.format]
+line-ending = "lf"
+quote-style = "single"
+
+[tool.ruff.mccabe]
+max-complexity = 15

@@ -2,5 +2,5 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_process_timeline(client, validate):
-    ...  # TODO: event fixture
+async def test_process_timeline(log, client, validate):
+    log.warning('TODO: event fixture')
