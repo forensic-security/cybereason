@@ -178,12 +178,12 @@ class SensorsMixin(CybereasonProtocol):
         '''
         group = await self.get_group_by_id(group_id)
         data = {
-            'name': group['name'] if name is unset else name,
-            'description': group['description'] if description is unset else description,
+            'name':            group['name'] if name is unset else name,
+            'description':     group['description'] if description is unset else description,
             'groupAssignRule': group['groupAssignRule'] if rules is unset else rules,
-            'policyId': group['policyId'] if policy_id is unset else policy_id,
+            'policyId':        group['policyId'] if policy_id is unset else policy_id,
         }
-        return await self.post(f'groups/{group_id}', data)
+        return await self.put(f'groups/{group_id}', data)
 
     @min_version(20, 2, 201)
     @authz('System Admin')
