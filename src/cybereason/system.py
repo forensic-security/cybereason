@@ -1,15 +1,17 @@
-from typing import Union, Optional, Any, Dict, List, Tuple
+from typing import TYPE_CHECKING
 from pathlib import Path
-from os import PathLike
 
 from .exceptions import ServerError, min_version
 from ._typing import CybereasonProtocol
 
+if TYPE_CHECKING:
+    from typing import Any, Dict, List, Optional, Tuple, Union
+    from os import PathLike
 
 class SystemMixin(CybereasonProtocol):
     @property
-    async def version(self) -> Tuple[int, int, int]:
-        if self.__version is None:
+    async def version(self) -> 'Tuple[int, ...]':
+        if not hasattr(self, '__version'):
             resp = await self.get('monitor/global/server/version/all')
             self.__version = tuple(int(x) for x in resp['data']['version'].split('.'))
             # TODO: monitor/global/server/version?serverId=<server_id>
@@ -17,7 +19,7 @@ class SystemMixin(CybereasonProtocol):
 
     @property
     async def server_id(self) -> str:
-        if self.__server_id is None:
+        if not hasattr(self, '__server_id'):
             servers = [s['id'] for s in await self.get_detection_servers()]
             if len(servers) == 1:
                 self.__server_id = servers[0]
@@ -27,10 +29,10 @@ class SystemMixin(CybereasonProtocol):
                 raise ValueError(f'Please specify one serverId: {", ".join(servers)}')
         return self.__server_id
 
-    async def get_users(self) -> List[Dict[str, Any]]:
+    async def get_users(self) -> 'List[Dict[str, Any]]':
         return await self.get('users')
 
-    async def get_user(self, username: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_user(self, username: 'Optional[str]' = None) -> 'List[Dict[str, Any]]':
         '''
         Args:
             username: If not specified, returns the client's logged user.
@@ -51,11 +53,14 @@ class SystemMixin(CybereasonProtocol):
 
     async def get_investigation_config(
         self
-    ) -> Dict[str, Dict[str, List[Dict[str, Union[str, List[str]]]]]]:
+    ) -> 'Dict[str, Dict[str, List[Dict[str, Union[str, List[str]]]]]]':
         resp = await self.get('investigation/configuration')
         return resp['configurationModel']
 
-    async def get_latest_installers(self, server_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_latest_installers(
+        self,
+        server_id: 'Optional[str]' = None,
+    ) -> 'List[Dict[str, Any]]':
         query = {'serverId': server_id or await self.server_id}
         resp = await self.get('monitor/global/versions/latest', query=query)
         # denormalize output
@@ -66,8 +71,8 @@ class SystemMixin(CybereasonProtocol):
     async def download_installer(
         self,
         system:    str,
-        folder:    PathLike,
-        server_id: Optional[str] = None,
+        folder:    'PathLike',
+        server_id: 'Optional[str]' = None,
     ) -> Path:
         '''
         Args:
@@ -100,9 +105,9 @@ class SystemMixin(CybereasonProtocol):
 
     async def download_malop_syslog(
         self,
-        folder:    PathLike,
+        folder:    'PathLike',
         extract:   bool = False,
-        server_id: Optional[str] = None,
+        server_id: 'Optional[str]' = None,
     ) -> Path:
         return await self.download(
             'monitor/global/server/logs',

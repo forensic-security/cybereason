@@ -1,4 +1,4 @@
-from typing import Any, Optional, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, cast
 from json.decoder import JSONDecodeError
 from functools import cached_property
 from pathlib import Path
@@ -22,7 +22,7 @@ from .system import SystemMixin
 from .threat_intel import ThreatIntelligenceMixin
 
 if TYPE_CHECKING:
-    from typing import AsyncIterator, Callable, Dict, Literal, Tuple, Union
+    from typing import Any, AsyncIterator, Callable, Dict, Literal, Optional, Tuple, Union
     from io import BufferedIOBase
     from tarfile import TarFile
     from zipfile import ZipFile
@@ -49,8 +49,8 @@ class Cybereason(
         tenant:    str,
         username:  str,
         password:  str,
-        proxy:     Optional[str] = None,
-        totp_code: Optional[str] = None,
+        proxy:     'Optional[str]' = None,
+        totp_code: 'Optional[str]' = None,
         timeout:   'Union[float, Timeout]' = DEFAULT_TIMEOUT,
     ):
         self.tenant = tenant.split('.')[0]
@@ -59,11 +59,6 @@ class Cybereason(
         self.proxy = proxy
         self.totp_code = totp_code
         self.timeout = timeout
-        # cached properties
-        self.__features_map = None
-        self.__version = None
-        self.__server_id = None
-        self.__reputation_list = None
 
     @cached_property
     def session(self) -> AsyncClient:
@@ -212,13 +207,13 @@ class Cybereason(
         self,
         method:   str,
         path:     'UrlPath',
-        data:     Any = None,
+        data:     'Any' = None,
         query:    'Query' = None,
         files:    'Query' = None,
         raw:      bool = False,
         raw_data: bool = False,
         retried:  bool = False,
-    ) -> Any:
+    ) -> 'Any':
         if raw_data:
             kwargs = dict(data=data, params=query, files=files)
         else:
@@ -271,26 +266,26 @@ class Cybereason(
         path:  'UrlPath',
         query: 'Query' = None,
         raw:   bool = False,
-    ) -> Any:
+    ) -> 'Any':
         return await self._request('GET', path, query=query, raw=raw)
 
     async def post(
         self,
         path:     'UrlPath',
-        data:     Any,
+        data:     'Any',
         files:    'Query' = None,
         raw_data: bool = False,
-    ) -> Any:
+    ) -> 'Any':
         return await self._request('POST', path, data=data, files=files, raw_data=raw_data)
 
-    async def put(self, path: 'UrlPath', data: Any) -> Any:
+    async def put(self, path: 'UrlPath', data: 'Any') -> 'Any':
         return await self._request('PUT', path, data=data)
 
     async def delete(
         self,
         path:  'UrlPath',
         query: 'Query' = None,
-    ) -> Any:
+    ) -> 'Any':
         return await self._request('DELETE', path, query=query)
 
     async def raw_download(
@@ -427,7 +422,7 @@ class Cybereason(
 
     @property
     async def features_map(self) -> 'Dict[str, Dict[str, Any]]':
-        if self.__features_map is None:
+        if not hasattr(self, '__features_map'):
             self.__features_map = await self.get('translate/features/all/')
         return self.__features_map
 

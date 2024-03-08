@@ -1,8 +1,8 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 import logging
 
 if TYPE_CHECKING:
-    from typing import Union, AsyncIterator, Callable, Awaitable, TypeVar
+    from typing import Optional, Union, AsyncIterator, Callable, Awaitable, TypeVar
 
     F = TypeVar('F', bound=Callable[..., Union[AsyncIterator, Awaitable]])
 
@@ -19,7 +19,7 @@ class ClientError(CybereasonException):
 
 
 class UnauthorizedRequest(CybereasonException):
-    def __init__(self, url: str, role: Optional[str] = None) -> None:
+    def __init__(self, url: str, role: 'Optional[str]' = None) -> None:
         if role:
             msg = f'You must have the {role} role'
         else:
@@ -108,7 +108,7 @@ def get_response_error(status):
     return exc
 
 
-def _add_to_doc(doc: Optional[str], text: str) -> str:
+def _add_to_doc(doc: 'Optional[str]', text: str) -> str:
     from textwrap import dedent
 
     doc = dedent((doc or '').strip())

@@ -15,7 +15,7 @@ unset = Unset()
 
 
 if TYPE_CHECKING:
-    from typing import Any, AsyncIterator, Dict, Literal, NewType, Optional, Protocol, Union, TypeVar
+    from typing import Any, AsyncIterator, Dict, Literal, NewType, Optional, Protocol, Union, Tuple, TypeVar
     from pathlib import Path
     from os import PathLike
     from httpx import AsyncClient, URL
@@ -29,13 +29,13 @@ if TYPE_CHECKING:
     SensorId = NewType('SensorId', str)
 
     class CybereasonProtocol(Protocol):
-        proxy:     Optional[str]
-        totp_code: Optional[str]
+        proxy:        Optional[str]
+        totp_code:    Optional[str]
 
         @property
         def session(self) -> AsyncClient: ...
 
-        def check_resp(self, resp: dict[str, Any]) -> Any: ...
+        def check_resp(self, resp: Dict[str, Any]) -> Any: ...
         async def get(self, path: UrlPath, query: Query=None, raw: bool=False) -> Any: ...
         async def post(self, path: UrlPath, data: Any, files: Query=None, raw_data: bool=False) -> Any: ...
         async def put(self, path: UrlPath, data: Any) -> Any: ...

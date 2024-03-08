@@ -1,3 +1,12 @@
+# https://mypy.readthedocs.io/en/stable/config_file.html
+[tool.mypy]
+python_version = "3.8"
+ignore_missing_imports = true
+exclude = [
+    'build/',
+    'tests/',
+]
+
 # https://docs.pytest.org/en/stable/reference/reference.html#ini-options-ref
 [tool.pytest.ini_options]
 log_cli = "true"

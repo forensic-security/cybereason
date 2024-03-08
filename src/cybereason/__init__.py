@@ -4,4 +4,4 @@ from .client import Cybereason, Timeout
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = ['Cybereason', 'Timeout']
-__version__ = 0, 4, 0
+__version__ = 0, 4, 1

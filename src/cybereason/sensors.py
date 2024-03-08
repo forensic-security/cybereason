@@ -1,6 +1,5 @@
-from typing import Optional, Union, Any, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, cast
 from pathlib import Path
-from os import PathLike
 import logging
 import asyncio
 
@@ -13,8 +12,9 @@ from .exceptions import (
 from ._typing import CybereasonProtocol, unset
 
 if TYPE_CHECKING:
-    from typing import AsyncIterator, Dict, List
+    from typing import Any, AsyncIterator, Dict, List, Optional, Union
     from ._typing import SensorId, Unset, Unforced
+    from os import PathLike
 
 
 log = logging.getLogger(__name__)
@@ -131,9 +131,9 @@ class SensorsMixin(CybereasonProtocol):
     async def create_group(
         self,
         *, name:     str,
-        description: Optional[str] = None,
+        description: 'Optional[str]' = None,
         rules:       'Optional[List[Dict[str, Any]]]' = None,
-        policy_id:   Optional[str] = None,
+        policy_id:   'Optional[str]' = None,
     ) -> str:
         '''Creates a sensor group to help organize sensors in your
         environment. Returns the group's ID.
@@ -190,7 +190,7 @@ class SensorsMixin(CybereasonProtocol):
     async def delete_group(
         self,
         group_id:     str,
-        new_group_id: Optional[str] = None,
+        new_group_id: 'Optional[str]' = None,
     ) -> 'Dict[str, Any]':
         '''Deletes an existing sensor group.
 
@@ -229,7 +229,7 @@ class SensorsMixin(CybereasonProtocol):
     # TODO: you must be assigned to a group to run this request.
     @min_version(20, 1)
     @authz('Sensor Admin L1')
-    async def remove_from_group(self, *sensors_ids, filters: Optional[Any] = None) -> 'Any':
+    async def remove_from_group(self, *sensors_ids, filters: 'Optional[Any]' = None) -> 'Any':
         '''Removes a sensor from a sensor group, and assigns it to the
         unassigned group.
         '''
@@ -273,7 +273,7 @@ class SensorsMixin(CybereasonProtocol):
     async def delete_policy(
         self,
         policy_id: str,
-        assign_to: Optional[str] = None,
+        assign_to: 'Optional[str]' = None,
     ) -> 'Dict[str, Any]':
         if assign_to is None:
             default = await self.get_default_policy()
@@ -316,7 +316,7 @@ class SensorsMixin(CybereasonProtocol):
                     if typ == str and len(value) > 100:  # type: ignore
                         msg = f'The maximum length for the {name!r} tag is 100 characters'
                         raise ValueError(msg)
-                    ops[name] = {'operation': 'SET', 'value': cast(Union[str, bool], value)}
+                    ops[name] = {'operation': 'SET', 'value': cast('Union[str, bool]', value)}
                 else:
                     raise TypeError(f'{name!r} tag must be a {typ.__name__!r}')
 
@@ -418,8 +418,8 @@ class SensorsMixin(CybereasonProtocol):
     async def download_file(
         self,
         pylum_id: str,
-        filepath: PathLike,
-        destdir:  Optional[PathLike] = None,
+        filepath: 'PathLike',
+        destdir:  'Optional[PathLike]' = None,
         extract:  bool = False,
     ) -> Path:
         '''

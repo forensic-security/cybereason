@@ -16,7 +16,7 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
 # region QUERIES
     @property
     async def reputation_list(self):
-        if self.__reputation_list is None:
+        if not hasattr (self, '__reputation_list'):
             url = 'dynamic/v1/ti-reputation/api/v1/entity/lists/default'
             self.__reputation_list = await self.get(url)
         return self.__reputation_list
