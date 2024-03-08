@@ -113,7 +113,7 @@ policies:
               documentProtectionAIMode: { enum: [ AGGRESSIVE, CAUTIOUS, MODERATE ] }
               documentProtectionAIStatus: { enum: [ DETECT, DISABLED, PREVENT ] }
               documentProtectionExclusions: { type: array }  # TODO
-              documentProtectionMode: { enum: [ DETECT, DISABLED, PREVENT ] }
+              documentProtectionMode: { enum: [ DETECT, DISABLED, PREVENT, QUARANTINE ] }
               documentProtectionSensitivityLevel: { enum: [ AGGRESSIVE, CAUTIOUS, MODERATE ] }
               enabled: { type: boolean }
               exclusions: { type: array, items: *FileExclusion }
@@ -131,10 +131,11 @@ policies:
               quickScanMode: { enum: [ SCAN, SKIP ] }
               scanArchives: { type: boolean }
               scanDllFiles: { type: boolean }
+              shareTelemetryData: { type: boolean }
               signatureMode: { enum: [ BLOCK, DETECT, DISABLED, QUARANTINE ] }
               signerAllowlist: { type: array }  # TODO
               updateFrequencyIntervalMin: { type: integer }
-              variantFilePreventionMode: { enum: [ VFP_MODE_DISABLED ] }
+              variantFilePreventionMode: { enum: [ VFP_MODE_DETECT, VFP_MODE_DISABLED, VFP_MODE_PREVENT, VFP_MODE_QUARANTINE ] }
               variantFilePreventionRuleIdExclusion: { type: array } # TODO
           powershellProtection:  # TODO
             type: object
@@ -205,7 +206,9 @@ policies:
           infrastructure:
             type: object
             properties:
+              maintenanceProtectionEnabled: { type: boolean }
               selfProtectEnabled: { type: boolean }
+              selfProtectGAEnabled: { type: boolean }
           rulesEngine:
             type: object
             properties:
@@ -283,7 +286,7 @@ sensors:
       collectiveUuid: { type: string, format: uuid }
       osType: { enum: [ LINUX, OSX, WINDOWS, UNKNOWN_OS ] }
       osVersionType: { type: string }
-      collectionStatus: { enum: [ DISABLED, ADVANCED, ENABLED, SUSPENDED ] }
+      collectionStatus: { enum: [ ADVANCED, DISABLED, ENABLED, SUSPENDED ] }
       version: { type: string }
       consoleVersion: { type: [ string, 'null' ] }
       firstSeenTime: { type: integer }
@@ -293,29 +296,32 @@ sensors:
       outdated: { type: boolean }
       amStatus: { enum: [ AM_BLOCK, AM_DETECT_DISINFECT, AM_DETECT_ONLY, AM_FIRST_TIME_INITIALIZATION, AM_PRIOR_AV_ERROR, AM_QUARANTINE, AM_UNINSTALLED, AM_UNKNOWN_ERROR, UNKNOWN ] }
       amModeOrigin: { type: [ string, 'null' ] }
-      avDbVersion: { type: string }
+      avDbVersion: { type: [ string, 'null' ] }
       avDbLastUpdateTime: { type: integer }
       powerShellStatus: { enum: [ '', PS_DISABLED, PS_ENABLED ] }
-      bepMode: { enum: [ '', BEP_DISABLED, BEP_PREVENT, BEP_DETECT ] }
-      vppMode: { enum: [ '', VPP_PREVENT, VPP_DETECT, VPP_DISABLED ] }
-      remoteShellStatus: { enum: [ AC_ENABLED, AC_DISABLED ] }
-      usbStatus: { enum: [ DISABLED ] }
+      bepMode: { enum: [ '', BEP_DETECT, BEP_DISABLED, BEP_PREVENT ] }
+      vppMode: { enum: [ '', VPP_DETECT, VPP_DISABLED, VPP_PREVENT ] }
+      remoteShellStatus: { enum: [ AC_DISABLED, AC_ENABLED ] }
+      usbStatus: { enum: [ DISABLED, ENABLED ] }
       fwStatus: { enum: [ DISABLED ] }
       antiExploitStatus: { enum: [ '', AE_AGGRESSIVE, AE_CAUTIOUS, AE_DISABLED, AE_ENABLED, AE_UNKNOWN ] }
       documentProtectionStatus: { enum: [ '', DS_DETECT, DS_DISABLED, DS_PREVENT, DS_UNKNOWN ] }
       documentProtectionMode: { enum: [ '', DM_AGGRESSIVE, DM_CAUTIOUS, DM_MODERATE, DM_UNKNOWN ] }
       serialNumber: { type: string }
       deviceModel: { type: string }
-      organizationalUnit: { type: string }
-      variantFilePreventionMode: { enum: [ '', VFP_M_UNKNOWN, VFP_M_DISABLED ] }
-      antiMalwareStatus: { enum: [ '', AM_ENABLED, AM_DISABLED ] }
+      organizationalUnit: { type: [ string, 'null' ] }
+      variantFilePreventionMode: { enum: [ '', VFP_M_DETECT, VFP_M_DISABLED, VFP_M_PREVENT, VFP_M_QUARANTINE, VFP_M_UNKNOWN, null ] }
+      antiMalwareStatus: { enum: [ '', AM_DISABLED, AM_ENABLED ] }
       antiMalwareModeOrigin: { enum: [ SET_BY_POLICY, null ]}
       organization: { type: string }
-      proxyAddress: { type: string }
-      preventionError: { enum: [ '', BLOCKI_GENERAL_ERROR ] }
+      proxyAddress: { type: [ string, 'null' ] }
+      preventionError: { enum: [ '', BLOCKI_GENERAL_ERROR, null ] }
       exitReason: { enum: [ STOP_REQUEST_FROM_PYLUM ] }
       actionsInProgress: { type: integer }
-      pendingActions: { type: array }  # TODO
+      pendingActions:
+        oneOf:
+          - type: 'null'
+          - type: array  # TODO
       lastUpgradeResult: *lastUpgradeResult
       department: { type: [ string, 'null' ] }
       location: { type: [ string, 'null' ] }
@@ -323,12 +329,14 @@ sensors:
       deviceType: { type: [ string, 'null' ] }
       customTags: { type: [ string, 'null' ] }
       lastUpgradeSteps:
-        type: array
-        items:
-          type: object
-          properties:
-            name: *lastUpgradeResult
-            startTime: { type: integer }
+        oneOf:
+          - type: 'null'
+          - type: array
+            items:
+              type: object
+              properties:
+                name: *lastUpgradeResult
+                startTime: { type: integer }
       disconnected: { type: boolean }
       staticAnalysisDetectMode: { enum: [ AGGRESSIVE, CAUTIOUS, DISABLED, MODERATE, UNKNOWN ] }
       staticAnalysisDetectModeOrigin: { enum: [ AWAITING_UPDATE, null ] }
@@ -375,10 +383,10 @@ group: &group
         - { const: 'Admin' }
     groupAssignRule:
       oneOf:
-        - { type: 'null' }
+        - type: 'null'
         - type: object
           properties:  # TODO
-            ruleType: { enum: [ externalIpAddress, machineName, organization, organizationalUnit ] }
+            ruleType: { enum: [ externalIpAddress, fqdn, machineName, organization, organizationalUnit ] }
             ruleOperator: { enum: [ ContainsIgnoreCase, EqualsIgnoreCase ]}
             ruleValues: { type: array, items: { type: string }}
     groupAssignRuleList: { type: 'null' }

@@ -55,36 +55,36 @@ reputations:
   type: array
   items:
     oneOf:
-      type: object
-      properties:
-        reputationType: { enum: [ FILE ] }
-        <<: *_BaseRepProps
-        <<: *_FileRepProps
-        additionalKeys:
-          type: array
-          items:
-            type: object
-            properties:
-              <<: *_FileRepProps
-      type: object
-      properties:
-        reputationType: { enum: [ IP ] }
-        <<: *_BaseRepProps
-        <<: *_IpRepProps
-        additionalKeys:
-          type: array
-          items:
-            type: object
-            properties:
-              <<: *_IpRepProps
-      type: object
-      properties:
-        reputationType: { enum: [ DOMAIN ] }
-        <<: *_BaseRepProps
-        <<: *_DomainRepProps
-        additionalKeys:
-          type: array
-          items:
-            type: object
-            properties:
-              <<: *_DomainRepProps
+      - type: object
+        properties:
+          reputationType: { enum: [ FILE ] }
+          <<: *_BaseRepProps
+          <<: *_FileRepProps
+          additionalKeys:
+            type: array
+            items:
+              type: object
+              properties:
+                <<: *_FileRepProps
+      - type: object
+        properties:
+          reputationType: { enum: [ IP ] }
+          <<: *_BaseRepProps
+          <<: *_IpRepProps
+          additionalKeys:
+            type: array
+            items:
+              type: object
+              properties:
+                <<: *_IpRepProps
+      - type: object
+        properties:
+          reputationType: { enum: [ DOMAIN ] }
+          <<: *_BaseRepProps
+          <<: *_DomainRepProps
+          additionalKeys:
+            type: array
+            items:
+              type: object
+              properties:
+                <<: *_DomainRepProps

@@ -165,7 +165,7 @@ def min_version(major: int, minor: int, release: int = 0) -> 'Callable[[F], F]':
                     async for item in func(self, *args, **kwargs):
                         yield item
                 except Exception:
-                    if self.version < (major, minor, release):
+                    if await self.version < (major, minor, release):
                         raise NotImplementedError(
                             f'This feature is only available since version {version}'
                         ) from None
@@ -176,7 +176,7 @@ def min_version(major: int, minor: int, release: int = 0) -> 'Callable[[F], F]':
                 try:
                     return await func(self, *args, **kwargs)
                 except Exception:
-                    if self.version < (major, minor, release):
+                    if await self.version < (major, minor, release):
                         raise NotImplementedError(
                             f'This feature is only available since version {version}'
                         ) from None

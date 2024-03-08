@@ -59,6 +59,11 @@ class Cybereason(
         self.proxy = proxy
         self.totp_code = totp_code
         self.timeout = timeout
+        # cached properties
+        self.__features_map = None
+        self.__version = None
+        self.__server_id = None
+        self.__reputation_list = None
 
     @cached_property
     def session(self) -> AsyncClient:
@@ -420,14 +425,11 @@ class Cybereason(
         resp.raise_for_status()
         return resp.json()
 
-    @cached_property
-    def features_map(self) -> 'Dict[str, Dict[str, Any]]':
-        import asyncio
-
-        async def func():
-            return await self.get('translate/features/all/')
-
-        return asyncio.run(func())
+    @property
+    async def features_map(self) -> 'Dict[str, Dict[str, Any]]':
+        if self.__features_map is None:
+            self.__features_map = await self.get('translate/features/all/')
+        return self.__features_map
 
     async def get_user_audit_logs(self, rotated: bool = True) -> 'AsyncIterator[Dict[str, Any]]':
         '''The User Audit log (aka Actions log) displays all user

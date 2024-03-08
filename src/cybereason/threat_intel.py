@@ -1,11 +1,9 @@
 from typing import TYPE_CHECKING, Any
-from functools import cached_property
 from ipaddress import ip_address
 from datetime import datetime
 from pathlib import Path
 from os import PathLike
 import hashlib
-import asyncio
 
 from ._typing import CybereasonProtocol
 
@@ -16,12 +14,12 @@ if TYPE_CHECKING:
 class ThreatIntelligenceMixin(CybereasonProtocol):
 
 # region QUERIES
-    @cached_property
-    def reputation_list(self):
-        async def replist():
+    @property
+    async def reputation_list(self):
+        if self.__reputation_list is None:
             url = 'dynamic/v1/ti-reputation/api/v1/entity/lists/default'
-            return await self.get(url)
-        return asyncio.run(replist())
+            self.__reputation_list = await self.get(url)
+        return self.__reputation_list
 
     # async def get_custom_reputations(
     #     self,
@@ -36,7 +34,8 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
     #         yield x
 
     async def get_reputations(self) -> 'AsyncIterator[Dict[str, Any]]':
-        url = f'dynamic/v1/ti-reputation/api/v1/lists/{self.reputation_list}/reputations/search'
+        rep_list = await self.reputation_list
+        url = f'dynamic/v1/ti-reputation/api/v1/lists/{rep_list}/reputations/search'
         async for x in self.aiter_items(url, {}, 'reputations', pagination=True):
             yield x
 
@@ -58,13 +57,14 @@ class ThreatIntelligenceMixin(CybereasonProtocol):
             'action':           action,
             'keys':             keys,
             'groupIds':         groups,
-            'reputationListId': self.reputation_list,
+            'reputationListId': await self.reputation_list,
         }
         # TODO: remove expiration?
         if expiration is not None:
             data['expiresAt'] = int(expiration.timestamp() * 1000)
 
-        url = f'dynamic/v1/ti-reputation/api/v1/lists/{self.reputation_list}/reputations/{id}'
+        rep_list = await self.reputation_list
+        url = f'dynamic/v1/ti-reputation/api/v1/lists/{rep_list}/reputations/{id}'
         return await self.put(url, data)
 
     async def get_file_reputation(self, path: PathLike, use_sha1: bool = True) -> Any:

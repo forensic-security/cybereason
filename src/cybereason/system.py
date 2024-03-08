@@ -1,33 +1,31 @@
 from typing import Union, Optional, Any, Dict, List, Tuple
-from functools import cached_property
 from pathlib import Path
 from os import PathLike
-import asyncio
 
 from .exceptions import ServerError, min_version
 from ._typing import CybereasonProtocol
 
 
 class SystemMixin(CybereasonProtocol):
-    @cached_property
-    def version(self) -> Tuple[int, int, int]:
-        async def func():
+    @property
+    async def version(self) -> Tuple[int, int, int]:
+        if self.__version is None:
             resp = await self.get('monitor/global/server/version/all')
-            return tuple(int(x) for x in resp['data']['version'].split('.'))
+            self.__version = tuple(int(x) for x in resp['data']['version'].split('.'))
             # TODO: monitor/global/server/version?serverId=<server_id>
-        return asyncio.run(func())
+        return self.__version
 
-    @cached_property
-    def server_id(self) -> str:
-        async def func():
+    @property
+    async def server_id(self) -> str:
+        if self.__server_id is None:
             servers = [s['id'] for s in await self.get_detection_servers()]
             if len(servers) == 1:
-                return servers[0]
+                self.__server_id = servers[0]
             elif not servers:
                 raise ServerError('No detection server has been found.')
             else:
                 raise ValueError(f'Please specify one serverId: {", ".join(servers)}')
-        return asyncio.run(func())
+        return self.__server_id
 
     async def get_users(self) -> List[Dict[str, Any]]:
         return await self.get('users')
@@ -58,7 +56,7 @@ class SystemMixin(CybereasonProtocol):
         return resp['configurationModel']
 
     async def get_latest_installers(self, server_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        query = {'serverId': server_id or self.server_id}
+        query = {'serverId': server_id or await self.server_id}
         resp = await self.get('monitor/global/versions/latest', query=query)
         # denormalize output
         return [{**d, **v, **s} for s in resp
@@ -81,7 +79,7 @@ class SystemMixin(CybereasonProtocol):
         except KeyError:
             raise ValueError(system)
 
-        server_id = server_id or self.server_id
+        server_id = server_id or await self.server_id
 
         # download_id = [
         #     a['downloadId'] for n in await self.get_latest_installers(server_id)
@@ -109,7 +107,7 @@ class SystemMixin(CybereasonProtocol):
         return await self.download(
             'monitor/global/server/logs',
             folder=folder,
-            query={'serverId': server_id or self.server_id},
+            query={'serverId': server_id or await self.server_id},
             extract=extract,
         )
 
