@@ -1,5 +1,5 @@
 from datetime import datetime, date, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 import logging
 
 from .exceptions import authz, min_version
@@ -7,12 +7,32 @@ from .utils import parse_query_response
 from ._typing import CybereasonProtocol
 
 if TYPE_CHECKING:
-    from typing import Any, AsyncIterator, Dict, List, Optional, Union
+    from typing import Any, AsyncIterator, Dict, List, Optional, Tuple, Union
     from ._typing import MalopId
 
     Label = Dict[str, Union[str, int]]
 
 log = logging.getLogger(__name__)
+
+
+def _datetime_range(
+    start: 'Union[datetime, date]',
+    end:   'Union[datetime, date, None]' = None,
+) -> 'Tuple[int, int]':
+    if isinstance(start, date):
+        start = datetime.combine(start, datetime.min.time())
+
+    if end is None:
+        end = datetime.combine(date.today(), datetime.max.time())
+    elif isinstance(end, date):
+        end = datetime.combine(end, datetime.max.time())
+
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+
+    return  int(start.timestamp() * 1000), int(end.timestamp() * 1000)
 
 
 class MalopsMixin(CybereasonProtocol):
@@ -23,25 +43,32 @@ class MalopsMixin(CybereasonProtocol):
     ) -> 'List[Dict[str, Any]]':
         '''Retrieve all malops of all types between the given dates.
         '''
-        if isinstance(start, date):
-            start = datetime.combine(start, datetime.min.time())
+        _start, _end = _datetime_range(start, end)
+        data = {'startTime': _start, 'endTime': _end}
+        return (await self.post('detection/inbox', data))['malops']
 
-        if end is None:
-            end = datetime.combine(date.today(), datetime.max.time())
-        elif isinstance(end, date):
-            end = datetime.combine(end, datetime.max.time())
-
-        if start.tzinfo is None:
-            start = start.replace(tzinfo=timezone.utc)
-        if end.tzinfo is None:
-            end = end.replace(tzinfo=timezone.utc)
-
+    async def get_malops_v2(
+        self,
+        start:  'Union[datetime, date]',
+        end:    'Union[datetime, date, None]' = None,
+        search: 'Optional[dict]' = None,
+    ) -> 'AsyncIterator[Dict[str, Any]]':
+        _start, _end = _datetime_range(start, end)
         data = {
-            'startTime': int(start.timestamp() * 1000),
-            'endTime': int(end.timestamp() * 1000),
+            'search':     search or {},
+            'range':      {'from': _start, 'to': _end},
+            'pagination': {'pageSize': 100, 'offset': 0},
+            'federation': {'groups': []},
+            'sort':       [ {'field': 'LastUpdateTime', 'order': 'desc'} ]
         }
 
-        return (await self.post('detection/inbox', data))['malops']
+        while True:
+            resp = (await self.post('mmng/v2/malops', data))['data']
+            for malop in resp['data']:
+                yield malop
+            if (offset := resp['offset'] + resp['pageSize']) > resp['totalHits']:
+                break
+            data['pagination']['offset'] = offset  # type: ignore
 
     async def get_active_malops(self, logon: bool = False) -> 'AsyncIterator[Dict[str, Any]]':
         '''Get all malops currently active.

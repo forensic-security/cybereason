@@ -29,13 +29,15 @@ pytest
 > the Cybereason's API and data model, so testing errors are more likely to require
 > an update of either the models or the endpoints than a code change.
 
-## Caveats
-- `nest_asyncio`
+## Versioning
+This library follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Please, follow this specification and tag the commit appropriately.
 
-   Needed to _unasync_ some properties (like in `SystemMixin.version`) through nested
-   loop events. This feature was initially rejected by GvR but [there is a chance that
-   it will be implemented][1]. Remove the dependency if this is the case.
-  
+```sh
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push --follow-tags
+```
+
+## Caveats
 - `socksio`
 
    Used due to a [bug in the `httpx`'s implementation of SOCKS5][2]. Change it when resolved.
