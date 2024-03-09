@@ -49,13 +49,15 @@ class MalopsMixin(CybereasonProtocol):
 
     async def get_malops_v2(
         self,
-        start:  'Union[datetime, date]',
-        end:    'Union[datetime, date, None]' = None,
-        search: 'Optional[dict]' = None,
+        start:   'Union[datetime, date]',
+        end:     'Union[datetime, date, None]' = None,
+        search:  'Optional[dict[str, Any]]' = None,
+        filter_: 'Optional[dict[str, Any]]' = None,
     ) -> 'AsyncIterator[Dict[str, Any]]':
         _start, _end = _datetime_range(start, end)
         data = {
             'search':     search or {},
+            'filter':     filter_ or {},
             'range':      {'from': _start, 'to': _end},
             'pagination': {'pageSize': 100, 'offset': 0},
             'federation': {'groups': []},
