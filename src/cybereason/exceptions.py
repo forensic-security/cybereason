@@ -50,7 +50,7 @@ class ResourceExistsError(CybereasonException):
     ...
 
 
-class FilterSyntaxError(CybereasonException, SyntaxError):
+class FilterSError(ClientError, ValueError):
     ...
 
 

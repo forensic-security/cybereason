@@ -5,7 +5,7 @@ import asyncio
 
 from .utils import to_list, get_filename
 from .exceptions import (
-    AccessDenied, ServerError, ClientError,
+    AccessDenied, ServerError, ClientError, FilterSError,
     ResourceExistsError, ResourceNotFoundError,
     authz, min_version,
 )
@@ -41,8 +41,11 @@ class SensorsMixin(CybereasonProtocol):
                 'values':    ['Archived'],
             })
 
-        async for sensor in self.aiter_pages('sensors/query', data, 'sensors'):
-            yield sensor
+        try:
+            async for sensor in self.aiter_pages('sensors/query', data, 'sensors'):
+                yield sensor
+        except KeyError:
+            raise FilterSError(filters) from None
 
     @authz('System Admin')
     async def get_sensors_actions(self) -> 'Any':

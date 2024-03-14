@@ -1,5 +1,5 @@
 from datetime import datetime, date, timezone
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 import logging
 
 from .exceptions import authz, min_version
@@ -32,7 +32,7 @@ def _datetime_range(
     if end.tzinfo is None:
         end = end.replace(tzinfo=timezone.utc)
 
-    return  int(start.timestamp() * 1000), int(end.timestamp() * 1000)
+    return int(start.timestamp() * 1000), int(end.timestamp() * 1000)
 
 
 class MalopsMixin(CybereasonProtocol):
@@ -51,8 +51,8 @@ class MalopsMixin(CybereasonProtocol):
         self,
         start:   'Union[datetime, date]',
         end:     'Union[datetime, date, None]' = None,
-        search:  'Optional[dict[str, Any]]' = None,
-        filter_: 'Optional[dict[str, Any]]' = None,
+        search:  'Optional[Dict[str, Any]]' = None,
+        filter_: 'Optional[Dict[str, Any]]' = None,
     ) -> 'AsyncIterator[Dict[str, Any]]':
         _start, _end = _datetime_range(start, end)
         data = {
