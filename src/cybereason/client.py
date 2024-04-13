@@ -137,6 +137,7 @@ class Cybereason(
                     'submit':             'Login',
                 }
                 await self.session.post('?originalurl=/current?', data=data, **options)
+                self.password = self.new_password
 
         if 'Two factor authentication' in resp.text:
             if not self.totp_code:
