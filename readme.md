@@ -2,7 +2,7 @@
 
 > Async Cybereason API client  
 >
-> ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/cybereason)
+> [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/cybereason)](https://pypi.org/project/cybereason/)
 
 
 

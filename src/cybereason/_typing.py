@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from typing import Any, AsyncIterator, Dict, Literal, NewType, Optional, Protocol, Union, Tuple, TypeVar
     from pathlib import Path
     from os import PathLike
-    from httpx import AsyncClient, URL
+    from httpx import AsyncClient, URL, Timeout
 
     T = TypeVar('T')
     Unforced = Union[Unset, T]
@@ -29,8 +29,13 @@ if TYPE_CHECKING:
     SensorId = NewType('SensorId', str)
 
     class CybereasonProtocol(Protocol):
+        tenant:       str
+        username:     str
+        password:     str
         proxy:        Optional[str]
         totp_code:    Optional[str]
+        timeout:      Union[float, Timeout]
+        new_password: Optional[str]
 
         @property
         def session(self) -> AsyncClient: ...
