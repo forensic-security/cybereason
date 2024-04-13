@@ -46,19 +46,21 @@ class Cybereason(
 ):
     def __init__(
         self,
-        tenant:    str,
-        username:  str,
-        password:  str,
-        proxy:     'Optional[str]' = None,
-        totp_code: 'Optional[str]' = None,
-        timeout:   'Union[float, Timeout]' = DEFAULT_TIMEOUT,
+        tenant:       str,
+        username:     str,
+        password:     str,
+        proxy:        'Optional[str]' = None,
+        totp_code:    'Optional[str]' = None,
+        timeout:      'Union[float, Timeout]' = DEFAULT_TIMEOUT,
+        new_password: 'Optional[str]' = None,
     ):
-        self.tenant = tenant.split('.')[0]
-        self.username = username
-        self.password = password
-        self.proxy = proxy
-        self.totp_code = totp_code
-        self.timeout = timeout
+        self.tenant       = tenant.split('.')[0]
+        self.username     = username
+        self.password     = password
+        self.proxy        = proxy
+        self.totp_code    = totp_code
+        self.timeout      = timeout
+        self.new_password = new_password
 
     @cached_property
     def session(self) -> AsyncClient:
@@ -123,8 +125,18 @@ class Cybereason(
             await self.session.aclose()
             raise AuthenticationError('Invalid credentials')
         elif 'reset' in str(resp.url):
-            await self.session.aclose()
-            raise AuthenticationError('Expired password')
+            if not self.new_password:
+                await self.session.aclose()
+                raise AuthenticationError('Expired password')
+            else:
+                log.warning('Renewing expired password.')
+                data = {
+                    'oldPassword':        self.password,
+                    'newPassword':        self.new_password,
+                    'confirmNewPassword': self.new_password,
+                    'submit':             'Login',
+                }
+                await self.session.post('?originalurl=/current?', data=data, **options)
 
         if 'Two factor authentication' in resp.text:
             if not self.totp_code:

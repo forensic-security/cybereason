@@ -40,6 +40,16 @@ class SystemMixin(CybereasonProtocol):
         username = username or 'current'
         return await self.get(f'users/{username}')
 
+    # TODO: check
+    async def update_password(self, new_password) -> str:
+        data = [self.password, new_password]
+        resp = await self.put('/users/reset', data)
+
+        if resp == 'incorrectPassword':
+            raise ValueError(resp)
+
+        return resp
+
     async def get_registration_servers(self):
         return await self.get('settings/get-registration-servers')
 
