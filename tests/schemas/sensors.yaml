@@ -299,8 +299,8 @@ sensors:
       avDbVersion: { type: [ string, 'null' ] }
       avDbLastUpdateTime: { type: integer }
       powerShellStatus: { enum: [ '', PS_DISABLED, PS_ENABLED ] }
-      bepMode: { enum: [ '', BEP_DETECT, BEP_DISABLED, BEP_PREVENT ] }
-      vppMode: { enum: [ '', VPP_DETECT, VPP_DISABLED, VPP_PREVENT ] }
+      bepMode: { enum: [ '', BEP_DETECT, BEP_DISABLED, BEP_PREVENT, null ] }
+      vppMode: { enum: [ '', VPP_DETECT, VPP_DISABLED, VPP_PREVENT, null ] }
       remoteShellStatus: { enum: [ AC_DISABLED, AC_ENABLED ] }
       usbStatus: { enum: [ DISABLED, ENABLED ] }
       fwStatus: { enum: [ DISABLED ] }

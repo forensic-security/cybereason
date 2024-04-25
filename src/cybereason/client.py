@@ -136,7 +136,7 @@ class Cybereason(
                     'confirmNewPassword': self.new_password,
                     'submit':             'Login',
                 }
-                await self.session.post('?originalurl=/current?', data=data, **options)
+                await self.session.post('?originalurl=/current?', data=data, **options)  # type: ignore
                 self.password = self.new_password
 
         if 'Two factor authentication' in resp.text:
@@ -371,7 +371,8 @@ class Cybereason(
             check_resp: ``True`` if the response returns either a
                 {status, data} or a {outcome, data} schema.
         '''
-        data = {**data, 'limit': page_size, 'offset': 0, 'sortDirection': sort}
+        data = {**data, 'limit': page_size, 'offset': 0}
+        data.setdefault('sortDirection', sort)
 
         while True:
             resp = await self.post(path, data)

@@ -31,7 +31,7 @@ MalopInboxModel: &MalopInbox
         - { type: 'null'}
     containers: { type: array }  # TODO
     creationTime: { type: integer }
-    decisionStatuses: { type: array, items: { enum: [ Prevented, Detected ] } }
+    decisionStatuses: { type: array, items: { enum: [ Detected, Prevented, Quarantined ] } }
     detectionEngines: { type: array, items: *MalopDetectionEngine  }
     detectionTypes: { type: array, items: { type: string } }
     displayName: { type: string }
@@ -61,6 +61,24 @@ MalopInboxModel: &MalopInbox
     status: { enum: [ Excluded, Active, Remediated, Closed ] }
     users: { type: array, items: *UserInbox }
 
+BaseFileMalwareDataModel: &BaseFileMalwareDataModel
+  type: object
+  properties:
+    '@class': { const: .BaseFileMalwareDataModel }
+    type: *MalwareType
+    detectionName: { type: [ string, 'null' ] }
+    filePath: { type: string }
+
+FilelessMalwareDataModel: &FilelessMalwareDataModel
+  type: object
+  properties:
+    '@class': { const: .FilelessMalwareDataModel }
+    processName: { type: string }
+    url: { type: [ string, 'null'] }
+    detectionRule: { type: string }
+    module: { type: string }
+    description: { type: string }
+
 malops:
   type: array
   items: *MalopInbox
@@ -73,7 +91,7 @@ malop_v2: &MalopV2
         - { type: string, format: email }
         - { type: 'null'}
     creationTime: { type: integer }
-    decisionStatuses: { type: array, items: { enum: [ Prevented, Detected ] } }
+    decisionStatuses: { type: array, items: { enum: [ Detected, Prevented, Quarantined ] } }
     detectionEngines: { type: array, items: *MalopDetectionEngine  }
     detectionType: *MalopDetectionType
     detectionTypes: { type: array, items: { type: string } }
@@ -125,6 +143,35 @@ malop_v2: &MalopV2
 malops_v2:
   type: array
   items: *MalopV2
+
+malware:
+  type: array
+  items:
+    type: object
+    properties:
+      detectionEngine: { enum: [ AntiVirus, ApplicationControl, Script, StaticAnalysis ] }
+      detectionValue: { type: string }
+      detectionValueType: { enum: [ DVT_FILE, DVT_SIGNATURE ] }
+      elementType: { enum: [ File, Process] }  # process only in fileless malware
+      id:
+        type: object
+        properties:
+          guid: { type: string }
+          timestamp: { type: integer }
+          malwareType: *MalwareType
+          elementType: { enum: [ File, Process] }
+      guid: { type: string }
+      machineName: { type: string }
+      malwareDataModel: { oneOf: [ *BaseFileMalwareDataModel, *FilelessMalwareDataModel ] }
+      name: { type: string }
+      needsAttention: { type: boolean }
+      referenceElementType: { enum: [ File, Process] }
+      referenceGuid: { type: string }
+      schedulerScan: { type: boolean }
+      score: { type: number }
+      status: { enum: [ Detected, Prevented, Quarantined ]}
+      timestamp: { type: integer }
+      type: *MalwareType
 
 status:
   type: object

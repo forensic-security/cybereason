@@ -13,3 +13,6 @@ MalopDetectionEngine: &MalopDetectionEngine
 
 MalopInvestigationStatus: &MalopInvestigationStatus
   enum: [ Closed, OnHold, Pending, Reopened, UnderInvestigation ]
+
+MalwareType: &MalwareType
+  enum: [ ApplicationControlMalware, FilelessMalware, KnownMalware, UnknownMalware ]

@@ -122,8 +122,17 @@ class MalopsMixin(CybereasonProtocol):
 
     @min_version(17, 5)
     @authz('Analyst L1')
-    async def get_malware_alerts(self, filters=None) -> 'AsyncIterator[Any]':
-        data = {'filters': filters or [], 'sortingFieldName': 'timestamp'}
+    async def get_malware_alerts(
+        self,
+        filters:       'Optional[List[Dict]]' = None,
+        sort_fieldname: str = 'timestamp',
+        sort_direction: str = 'DESC',
+    ) -> 'AsyncIterator[Any]':
+        data = {
+            'filters':          filters or [],
+            'sortingFieldName': sort_fieldname,
+            'sortDirection':    sort_direction,
+        }
         async for alert in self.aiter_pages('malware/query', data, 'malwares', check_resp=True):
             yield alert
 
