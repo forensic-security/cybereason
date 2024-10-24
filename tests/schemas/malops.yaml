@@ -31,7 +31,7 @@ MalopInboxModel: &MalopInbox
         - { type: 'null'}
     containers: { type: array }  # TODO
     creationTime: { type: integer }
-    decisionStatuses: { type: array, items: { enum: [ Detected, Prevented, Quarantined ] } }
+    decisionStatuses: { type: array, items: { enum: [ Deleting on restart, Detected, Disinfect, Prevented, Quarantined ] } }
     detectionEngines: { type: array, items: *MalopDetectionEngine  }
     detectionTypes: { type: array, items: { type: string } }
     displayName: { type: string }
@@ -65,19 +65,19 @@ BaseFileMalwareDataModel: &BaseFileMalwareDataModel
   type: object
   properties:
     '@class': { const: .BaseFileMalwareDataModel }
-    type: *MalwareType
     detectionName: { type: [ string, 'null' ] }
     filePath: { type: string }
+    type: *MalwareType
 
 FilelessMalwareDataModel: &FilelessMalwareDataModel
   type: object
   properties:
     '@class': { const: .FilelessMalwareDataModel }
-    processName: { type: string }
-    url: { type: [ string, 'null'] }
+    description: { type: string }
     detectionRule: { type: string }
     module: { type: string }
-    description: { type: string }
+    processName: { type: string }
+    url: { type: [ string, 'null'] }
 
 malops:
   type: array
@@ -91,7 +91,8 @@ malop_v2: &MalopV2
         - { type: string, format: email }
         - { type: 'null'}
     creationTime: { type: integer }
-    decisionStatuses: { type: array, items: { enum: [ Detected, Prevented, Quarantined ] } }
+    decisionFeatures: { type: array, items: { type: string } }
+    decisionStatuses: { type: array, items: { enum: [ Deleting on restart, Detected, Disinfect, Prevented, Quarantined ] } }
     detectionEngines: { type: array, items: *MalopDetectionEngine  }
     detectionType: *MalopDetectionType
     detectionTypes: { type: array, items: { type: string } }
@@ -129,7 +130,7 @@ malop_v2: &MalopV2
           lastConnected: { type: integer }
           osType: { enum: [ LINUX, OSX, WINDOWS ] }
           pylumId: { type: string }
-    metadataUpdateTime: { type: integer }
+    metadataUpdateTime: { type: [ integer, 'null' ] }
     mitreSubTechniques: { type: array, items: { type: string } }
     mitreTactics: { type: array, items: { type: string } }
     mitreTechniques: { type: array, items: { type: string } }
@@ -151,7 +152,7 @@ malware:
     properties:
       detectionEngine: { enum: [ AntiVirus, ApplicationControl, Script, StaticAnalysis ] }
       detectionValue: { type: string }
-      detectionValueType: { enum: [ DVT_FILE, DVT_SIGNATURE ] }
+      detectionValueType: { enum: [ DVT_DOMAIN, DVT_FILE, DVT_SIGNATURE ] }
       elementType: { enum: [ File, Process] }  # process only in fileless malware
       id:
         type: object
@@ -168,21 +169,21 @@ malware:
       referenceElementType: { enum: [ File, Process] }
       referenceGuid: { type: string }
       schedulerScan: { type: boolean }
-      score: { type: number }
-      status: { enum: [ Detected, Prevented, Quarantined ]}
+      score: { type: [ number, 'null' ] }
+      status: { enum: [ Detected, FailedToQuarantine, Prevented, Quarantined, Remediated ]}
       timestamp: { type: integer }
       type: *MalwareType
 
 status:
   type: object
   properties:
-    guid: *CrGuid
-    malopLabels: { type: array, items: { type: integer }}
-    status: { enum: [ ACTIVE, CLOSED, FP, OPEN, REOPEN, RESOLVED, TODO, UNREAD ] }
-    malopPriority: { type: string }  # TODO: enum [UNSPECIFIED, ...]
-    investigationStatus: *MalopInvestigationStatus
     closerName: { oneOf: [ { type: string, format: email }, { type: 'null'} ] }
     closeTime: { type: [ integer, 'null' ] }
-    version: { type: integer }
-    lastUpdated: { type: integer }
     empty: { type: boolean }
+    investigationStatus: *MalopInvestigationStatus
+    guid: *CrGuid
+    lastUpdated: { type: integer }
+    malopLabels: { type: array, items: { type: integer }}
+    malopPriority: { enum: [ UNSPECIFIED ] }
+    status: { enum: [ ACTIVE, CLOSED, FP, OPEN, REOPEN, RESOLVED, TODO, UNREAD ] }
+    version: { type: integer }

@@ -1,5 +1,5 @@
 # region MALWARE
-lastUpgradeResult: &lastUpgradeResult { enum: [AlreadyUpdated, Failed, InProgress, InvalidCertificate, MsiSendFail, NewPackageDownloaded, None, SendingMsi, Started, Succeeded, Uninstalled ] }
+lastUpgradeResult: &lastUpgradeResult { enum: [AlreadyUpdated, Failed, InProgress, InvalidCertificate, MissingPackageFromFileSystem, MsiSendFail, NewPackageDownloaded, None, OsNotSupportedForUninstallation, Primed, SendingMsi, Started, Succeeded, Uninstalled ] }
 
 BaseFileMalwareDataModel: &BaseFileMalware
   type: object
@@ -13,41 +13,41 @@ FilelessMalwareDataModel: &FilelessMalware
   type: object
   properties:
     '@class': { const: .FilelessMalwareDataModel }
+    description: { type: [ string, 'null' ]}
+    detectionRule: { type: [ string, 'null' ]}
+    module: { type: [ string, 'null' ]}
     processName: { type: string }
     url:
       anyOf: [ { type: string, format: uri }, { type: 'null'} ]
-    detectionRule: { type: [ string, 'null' ]}
-    module: { type: [ string, 'null' ]}
-    description: { type: [ string, 'null' ]}
 
 malware_alerts:
   type: array
   items:
     type: object
     properties:
-      guid: { type: string}
-      timestamp: { type: integer }
-      name: { type: string }
-      type: { type: string }
-      elementType: { type: string }
-      machineName: { type: string }
-      status: { type: string }
-      needsAttention: { type: boolean }
-      referenceGuid: { type: string }
-      referenceElementType: { type: string }
-      score: { type: [ number, 'null' ] }  # TODO: nulls only in FilelessMalware ?
-      detectionValue: { type: [ string, 'null' ] }  # ditto ^
-      detectionValueType: { type: [ string, 'null' ] }  # ditto ^
       detectionEngine: { type: string }
-      malwareDataModel: { oneOf: [ *BaseFileMalware, *FilelessMalware ] }
+      detectionValue: { type: [ string, 'null' ] }  # TODO: nulls only in FilelessMalware ?
+      detectionValueType: { type: [ string, 'null' ] }  # ditto ^
+      elementType: { type: string }
+      guid: { type: string}
       id:
         type: object
         properties:
-          guid: { type: string }
-          timestamp: { type: integer }
-          malwareType: { type: string }
           elementType: { type: string }
+          guid: { type: string }
+          malwareType: { type: string }
+          timestamp: { type: integer }
+      machineName: { type: string }
+      malwareDataModel: { oneOf: [ *BaseFileMalware, *FilelessMalware ] }
+      name: { type: string }
+      needsAttention: { type: boolean }
+      referenceElementType: { type: string }
+      referenceGuid: { type: string }
       schedulerScan: { type: boolean }
+      score: { type: [ number, 'null' ] }  # TODO: nulls only in FilelessMalware ?
+      status: { type: string }
+      timestamp: { type: integer }
+      type: { type: string }
 # endregion
 
 # region POLICIES
@@ -55,24 +55,24 @@ FileExclusion: &FileExclusion
   type: object
   properties:
     dataHash: { type: string, pattern: '^[0-9a-f]{64}$' }
-    file: { type: string }
-    modifiedBy: { type: string, format: email }
-    lastModified: { type: integer }
     description: { type: string }
+    file: { type: string }
+    lastModified: { type: integer }
+    modifiedBy: { type: string, format: email }
 
 RegistryInclusion: &RegistryInclusion
   type: object
   properties:
     dataHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+    depth: { type: boolean }
+    description: { type: string }
     key: { type: string }
-    values: { type: array, items: { type: string } }
+    lastModified: { type: integer }
     modifiedBy:
       anyOf:
       - { type: string, format: email }
       - { const: Cybereason }
-    lastModified: { type: integer }
-    description: { type: string }
-    depth: { type: boolean }
+    values: { type: array, items: { type: string } }
 
 policies:
   type: array
@@ -97,92 +97,6 @@ policies:
       configuration:
         type: object  # TODO: objects without properties
         properties:
-          nameDescription:
-            type: object
-            properties:
-              description: { type: string }
-              groupId: { type: string }
-              name: { type: string }
-              notes: { type: string }
-          antiMalware:
-            type: object
-            properties:
-              detectMode: { enum: [ 1, 2, 3, 4 ] }
-              disableUSNJournaling: { type: boolean }
-              documentProtectionAIExclusions: { type: array } # TODO
-              documentProtectionAIMode: { enum: [ AGGRESSIVE, CAUTIOUS, MODERATE ] }
-              documentProtectionAIStatus: { enum: [ DETECT, DISABLED, PREVENT ] }
-              documentProtectionExclusions: { type: array }  # TODO
-              documentProtectionMode: { enum: [ DETECT, DISABLED, PREVENT, QUARANTINE ] }
-              documentProtectionSensitivityLevel: { enum: [ AGGRESSIVE, CAUTIOUS, MODERATE ] }
-              enabled: { type: boolean }
-              exclusions: { type: array, items: *FileExclusion }
-              fullScan: { type: object }  # TODO (like quickScan)
-              fullScanEnabled: { type: boolean }
-              fullScanMode: { enum: [ SCAN, SKIP ] }
-              ignoreNetworkPaths: { type: boolean }
-              limitFileExtensions: { type: boolean }
-              localUpdateServerUrl: { const: '' }
-              onAccessScan: { type: boolean }
-              preventMode: { enum: [ 1, 2, 3, 4 ] }
-              quarantineMaliciousFiles: { type: boolean }
-              quickScan: { type: object }  # TODO
-              quickScanEnabled: { type: boolean }
-              quickScanMode: { enum: [ SCAN, SKIP ] }
-              scanArchives: { type: boolean }
-              scanDllFiles: { type: boolean }
-              shareTelemetryData: { type: boolean }
-              signatureMode: { enum: [ BLOCK, DETECT, DISABLED, QUARANTINE ] }
-              signerAllowlist: { type: array }  # TODO
-              updateFrequencyIntervalMin: { type: integer }
-              variantFilePreventionMode: { enum: [ VFP_MODE_DETECT, VFP_MODE_DISABLED, VFP_MODE_PREVENT, VFP_MODE_QUARANTINE ] }
-              variantFilePreventionRuleIdExclusion: { type: array } # TODO
-          powershellProtection:  # TODO
-            type: object
-            additionalProperties: true
-            properties:
-              enabled: { type: boolean }
-              processExclusions: { type: array, items: *FileExclusion }
-              urlAndDomainExclusions: { type: array, items: *FileExclusion }
-          antiRansomware:  # TODO
-            type: object
-            additionalProperties: true
-            properties:
-              processEnablers:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    enabled: { type: boolean }
-                    processName: { type: string }
-          appControl:
-            type: object
-            properties:
-              enabled: { type: boolean }
-          collectionFeatures:  # TODO
-            type: object
-            additionalProperties: true
-            properties:
-              registryEventsEnabled: { type: boolean }
-              registryEventsInclusions: { type: array, items: *RegistryInclusion }
-              registryEventsV2Enabled: { type: boolean }
-          endpointUiSettings: { type: object }
-          endpointProtection: { type: object }
-          antiExploit:
-            type: object
-            properties:
-              enabled: { type: boolean }
-              antiExploitMode: { enum: [ AGGRESSIVE, CAUTIOUS, EXISTING ] }
-              antiExploitExclusions:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    dataHash: { type: string }
-                    description: { type: string }
-                    lastModified: { type: integer }
-                    modifiedBy: { type: string, format: email }
-                    processName: { type: string }
           advancedFlags:
             type: object
             properties:
@@ -198,17 +112,147 @@ policies:
                         description: { type: string }
                         lastModified: { type: integer }
                         modifiedBy: { type: string, format: email }
-          response:
+          antiExploit:
             type: object
             properties:
               enabled: { type: boolean }
-          cms: { type: object }
+              antiExploitMode: { enum: [ AGGRESSIVE, CAUTIOUS, EXISTING ] }
+              antiExploitExclusions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    dataHash: { type: string }
+                    description: { type: string }
+                    lastModified: { type: integer }
+                    modifiedBy: { type: string, format: email }
+                    processName: { type: string }
+          antiMalware:
+            type: object
+            properties:
+              detectMode: { enum: [ 1, 2, 3, 4 ] }
+              disableUSNJournaling: { type: boolean }
+              documentProtectionAIExclusions: { type: array } # TODO
+              documentProtectionAIMode: { enum: [ AGGRESSIVE, CAUTIOUS, MODERATE ] }
+              documentProtectionAIStatus: { enum: [ DETECT, DISABLED, PREVENT, QUARANTINE ] }
+              documentProtectionExclusions: { type: array }  # TODO
+              documentProtectionMode: { enum: [ DETECT, DISABLED, PREVENT, QUARANTINE ] }
+              documentProtectionSensitivityLevel: { enum: [ AGGRESSIVE, CAUTIOUS, MODERATE ] }
+              enabled: { type: boolean }
+              exclusions: { type: array, items: *FileExclusion }
+              fullScan: { type: object }  # TODO (like quickScan)
+              fullScanEnabled: { type: boolean }
+              fullScanMode: { enum: [ SCAN, SKIP ] }
+              fullScanScheduleRange:
+                type: object
+                properties:
+                  dayOfWeekFrom: { type: integer }
+                  dayOfWeekTo: { type: integer }
+                  hourOfDayFrom: { type: integer }
+                  hourOfDayTo: { type: integer }
+                  monthlyOccurrenceFrom: { type: integer }
+                  monthlyOccurrenceTo: { type: integer }
+                  scanSchedule: { enum: [ DAILY ] }
+                  scanScheduleRangeState: { type: boolean }
+              ignoreNetworkPaths: { type: boolean }
+              limitFileExtensions: { type: boolean }
+              localUpdateServerUrl: { const: '' }
+              onAccessScan: { type: boolean }
+              preventMode: { enum: [ 1, 2, 3, 4 ] }
+              quarantineMaliciousFiles: { type: boolean }
+              quickScan: { type: object }  # TODO
+              quickScanEnabled: { type: boolean }
+              quickScanMode: { enum: [ SCAN, SKIP ] }
+              quickScanScheduleRange:
+                type: object
+                properties:
+                  dayOfWeekFrom: { type: integer }
+                  dayOfWeekTo: { type: integer }
+                  hourOfDayFrom: { type: integer }
+                  hourOfDayTo: { type: integer }
+                  monthlyOccurrenceFrom: { type: integer }
+                  monthlyOccurrenceTo: { type: integer }
+                  scanSchedule: { enum: [ DAILY ] }
+                  scanScheduleRangeState: { type: boolean }
+              scanArchives: { type: boolean }
+              scanDllFiles: { type: boolean }
+              shareTelemetryData: { type: boolean }
+              signatureMode: { enum: [ BLOCK, DETECT, DISABLED, QUARANTINE ] }
+              signerAllowlist: { type: array }  # TODO
+              updateFrequencyIntervalMin: { type: integer }
+              variantFilePreventionMode: { enum: [ VFP_MODE_DETECT, VFP_MODE_DISABLED, VFP_MODE_PREVENT, VFP_MODE_QUARANTINE ] }
+              variantFilePreventionRuleIdExclusion: { type: array } # TODO
+          antiRansomware:  # TODO
+            type: object
+            additionalProperties: true
+            properties:
+              processEnablers:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    enabled: { type: boolean }
+                    processName: { type: string }
+          appControl:
+            type: object
+            properties:
+              enabled: { type: boolean }
+          arw:
+            type: object
+            properties:
+              allDrivesEnabled: { type: boolean }
+              allowlist: { type: array }
+              autoRestoreEnabled: { type: boolean }
+              customShadowCopyEnabled: { type: boolean }
+              drives: { type: array }
+              level: { enum: [ AGGRESSIVE, CAUTIOUS, MODERATE ] }
+              maxDiscSpace: { type: integer }
+              mbrEnabled: { type: boolean }
+              mode: { enum: [ DETECT, DISABLED, PREVENT ] }
+              vssEnabled: { type: boolean }
+          autoUpgrades:
+            type: object
+            properties:
+              enabled: { type: boolean }
+              upgradeSchedule: { enum: [ REGULAR] }
+          certificateExclusions:
+            type: object
+            properties:
+              certificateExclusions: { type: array }
+          cms: { type: object }  # TODO
+          collectionFeatures:  # TODO
+            type: object
+            additionalProperties: true
+            properties:
+              registryEventsEnabled: { type: boolean }
+              registryEventsInclusions: { type: array, items: *RegistryInclusion }
+              registryEventsV2Enabled: { type: boolean }
+          endpointUiSettings: { type: object }
+          endpointProtection: { type: object }
           infrastructure:
             type: object
             properties:
               maintenanceProtectionEnabled: { type: boolean }
               selfProtectEnabled: { type: boolean }
               selfProtectGAEnabled: { type: boolean }
+          nameDescription:
+            type: object
+            properties:
+              description: { type: string }
+              groupId: { type: string }
+              name: { type: string }
+              notes: { type: string }
+          powershellProtection:  # TODO
+            type: object
+            additionalProperties: true
+            properties:
+              enabled: { type: boolean }
+              processExclusions: { type: array, items: *FileExclusion }
+              urlAndDomainExclusions: { type: array, items: *FileExclusion }
+          response:
+            type: object
+            properties:
+              enabled: { type: boolean }
           rulesEngine:
             type: object
             properties:
@@ -223,26 +267,9 @@ policies:
                     item: { type: string }
                     lastModified: { type: integer }
                     modifiedBy: { type: string, format: email }
-              rulesIdExclusions: { type: array, items: { type: object }}
               rulesEngineMode: { enum: [ DETECT, DISABLED, PREVENT ] }
+              rulesIdExclusions: { type: array, items: { type: object }}
               threadCallbackEvents: { type: boolean }
-          arw:
-            type: object
-            properties:
-              allDrivesEnabled: { type: boolean }
-              allowlist: { type: array }
-              autoRestoreEnabled: { type: boolean }
-              customShadowCopyEnabled: { type: boolean }
-              drives: { type: array }
-              level: { enum: [ AGGRESSIVE, CAUTIOUS, MODERATE ] }
-              maxDiscSpace: { type: integer }
-              mbrEnabled: { type: boolean }
-              mode: { enum: [ DETECT, DISABLED, PREVENT ] }
-              vssEnabled: { type: boolean }
-          certificateExclusions:
-            type: object
-            properties:
-              certificateExclusions: { type: array }
 # endregion
 
 # region SENSORS
@@ -251,83 +278,58 @@ sensors:
   items:
     type: object
     properties:
-      sensorId: { type: string }
-      pylumId: { type: string }
-      guid: { oneOf: [ *CrGuid, { const: '' } ]}
+      actionsInProgress: { type: integer }
+      amModeOrigin: { type: [ string, 'null' ] }
+      amStatus: { enum: [ AM_BLOCK, AM_DETECT_DISINFECT, AM_DETECT_ONLY, AM_FIRST_TIME_INITIALIZATION, AM_PRIOR_AV_ERROR, AM_QUARANTINE, AM_UNINSTALLED, AM_UNKNOWN_ERROR, UNKNOWN ] }
+      antiExploitStatus: { enum: [ '', AE_AGGRESSIVE, AE_CAUTIOUS, AE_DISABLED, AE_ENABLED, AE_UNKNOWN ] }
+      antiMalwareModeOrigin: { enum: [ SET_BY_POLICY, null ]}
+      antiMalwareStatus: { enum: [ '', AM_DISABLED, AM_ENABLED ] }
+      archivedOrUnarchiveComment: { type: [ string, 'null' ] }
+      archiveTimeMs: { type: [ integer, 'null' ] }
+      avDbLastUpdateTime: { type: integer }
+      avDbVersion: { type: [ string, 'null' ] }
+      bepMode: { enum: [ '', BEP_DETECT, BEP_DISABLED, BEP_PREVENT, null ] }
+      collectionComponents: { type: array, items: { enum: [ DPI, Metadata, File Events, Registry Events ] }}
+      collectionStatus: { enum: [ ADVANCED, DISABLED, ENABLED, SUSPENDED ] }
+      collectiveUuid: { type: string, format: uuid }
+      compliance: { type: [ boolean, 'null' ] }
+      consoleVersion: { type: [ string, 'null' ] }
+      cpuUsage: { type: number }
+      criticalAsset: { type: [ boolean, 'null' ] }
+      customTags: { type: [ string, 'null' ] }
+      decommissionedByUser: { type: [ string, 'null' ] }
+      decommissionedSensors: { type: boolean }
+      decommissionTimestamp: { type: [ integer, 'null' ] }
+      deliveryTime: { type: integer }
+      department: { type: [ string, 'null' ] }
+      deviceModel: { type: string }
+      deviceType: { type: [ string, 'null' ] }
+      disconnected: { type: boolean }
+      documentProtectionMode: { enum: [ '', DM_AGGRESSIVE, DM_CAUTIOUS, DM_MODERATE, DM_UNKNOWN ] }
+      documentProtectionStatus: { enum: [ '', DS_DETECT, DS_DISABLED, DS_PREVENT, DS_QUARANTINE, DS_UNKNOWN ] }
+      disconnectionTime: { type: integer }
+      exitReason: { enum: [ STOP_REQUEST_FROM_PYLUM ] }
+      externalIpAddress: { type: string, format: ipv4 }
+      firstSeenTime: { type: integer }
       fqdn:
         anyOf:
           - { type: string, format: idn-hostname }
           - { const: '' }
-      machineName: { type: string }
+      fullScanStatus: { enum: [ IN_PROGRESS, IDLE, UNKNOWN ] }
+      fwStatus: { enum: [ DISABLED ] }
+      groupId: { type: string, format: uuid }
+      groupName: { type: string }
+      groupStickiness: { type: boolean }
+      groupStickinessLabel: { enum: [ Dynamic, Manual ] }
+      guid: { oneOf: [ *CrGuid, { const: '' } ]}
       internalIpAddress: { type: string, format: ipv4 }
-      externalIpAddress: { type: string, format: ipv4 }
-      siteName: { type: string }
-      siteId: { type: integer }
-      ransomwareStatus: { enum: [ DETECT_AND_SUSPEND, DETECT_ONLY, DETECT_SUSPEND_PREVENT, DISABLED, UNKNOWN ] }
-      preventionStatus: { enum: [ NOT_INSTALLED, DISABLED, ENABLED, UNKNOWN ] }
       isolated: { type: boolean }
-      disconnectionTime: { type: integer }
+      lastFullScheduleScanSuccessTime: { type: integer }
       lastPylumInfoMsgUpdateTime: { type: integer }
       lastPylumUpdateTimestampMs: { type: integer }
-      status: { enum: [ Archived, Stale, Online, Offline ] }
-      serviceStatus: { enum: [ Down, Up ] }
-      onlineTimeMS: { type: integer }
-      offlineTimeMS: { type: integer }
-      staleTimeMS: { type: integer }
-      archiveTimeMs: { type: [ integer, 'null' ] }
-      statusTimeMS: { type: integer }
-      lastStatusAction: { enum: [ Archive, None, Unarchive ] }
-      archivedOrUnarchiveComment: { type: [ string, 'null' ] }
-      sensorArchivedByUser: { type: [ string, 'null' ] }
-      serverName: { type: string }
-      serverId: { type: string, pattern: '^[0-9a-f]{24}$' }
-      serverIp: { type: string, format: ipv4 }
-      privateServerIp: { type: string, format: ipv4 }
-      collectiveUuid: { type: string, format: uuid }
-      osType: { enum: [ LINUX, OSX, WINDOWS, UNKNOWN_OS ] }
-      osVersionType: { type: string }
-      collectionStatus: { enum: [ ADVANCED, DISABLED, ENABLED, SUSPENDED ] }
-      version: { type: string }
-      consoleVersion: { type: [ string, 'null' ] }
-      firstSeenTime: { type: integer }
-      upTime: { type: integer }
-      cpuUsage: { type: number }
-      memoryUsage: { type: integer }
-      outdated: { type: boolean }
-      amStatus: { enum: [ AM_BLOCK, AM_DETECT_DISINFECT, AM_DETECT_ONLY, AM_FIRST_TIME_INITIALIZATION, AM_PRIOR_AV_ERROR, AM_QUARANTINE, AM_UNINSTALLED, AM_UNKNOWN_ERROR, UNKNOWN ] }
-      amModeOrigin: { type: [ string, 'null' ] }
-      avDbVersion: { type: [ string, 'null' ] }
-      avDbLastUpdateTime: { type: integer }
-      powerShellStatus: { enum: [ '', PS_DISABLED, PS_ENABLED ] }
-      bepMode: { enum: [ '', BEP_DETECT, BEP_DISABLED, BEP_PREVENT, null ] }
-      vppMode: { enum: [ '', VPP_DETECT, VPP_DISABLED, VPP_PREVENT, null ] }
-      remoteShellStatus: { enum: [ AC_DISABLED, AC_ENABLED ] }
-      usbStatus: { enum: [ DISABLED, ENABLED ] }
-      fwStatus: { enum: [ DISABLED ] }
-      antiExploitStatus: { enum: [ '', AE_AGGRESSIVE, AE_CAUTIOUS, AE_DISABLED, AE_ENABLED, AE_UNKNOWN ] }
-      documentProtectionStatus: { enum: [ '', DS_DETECT, DS_DISABLED, DS_PREVENT, DS_UNKNOWN ] }
-      documentProtectionMode: { enum: [ '', DM_AGGRESSIVE, DM_CAUTIOUS, DM_MODERATE, DM_UNKNOWN ] }
-      serialNumber: { type: string }
-      deviceModel: { type: string }
-      organizationalUnit: { type: [ string, 'null' ] }
-      variantFilePreventionMode: { enum: [ '', VFP_M_DETECT, VFP_M_DISABLED, VFP_M_PREVENT, VFP_M_QUARANTINE, VFP_M_UNKNOWN, null ] }
-      antiMalwareStatus: { enum: [ '', AM_DISABLED, AM_ENABLED ] }
-      antiMalwareModeOrigin: { enum: [ SET_BY_POLICY, null ]}
-      organization: { type: string }
-      proxyAddress: { type: [ string, 'null' ] }
-      preventionError: { enum: [ '', BLOCKI_GENERAL_ERROR, null ] }
-      exitReason: { enum: [ STOP_REQUEST_FROM_PYLUM ] }
-      actionsInProgress: { type: integer }
-      pendingActions:
-        oneOf:
-          - type: 'null'
-          - type: array  # TODO
+      lastQuickScheduleScanSuccessTime: { type: integer }
+      lastStatusAction: { enum: [ Archive, None, Unarchive, null ] }
       lastUpgradeResult: *lastUpgradeResult
-      department: { type: [ string, 'null' ] }
-      location: { type: [ string, 'null' ] }
-      criticalAsset: { type: [ boolean, 'null' ] }
-      deviceType: { type: [ string, 'null' ] }
-      customTags: { type: [ string, 'null' ] }
       lastUpgradeSteps:
         oneOf:
           - type: 'null'
@@ -337,35 +339,60 @@ sensors:
               properties:
                 name: *lastUpgradeResult
                 startTime: { type: integer }
-      disconnected: { type: boolean }
-      staticAnalysisDetectMode: { enum: [ AGGRESSIVE, CAUTIOUS, DISABLED, MODERATE, UNKNOWN ] }
-      staticAnalysisDetectModeOrigin: { enum: [ AWAITING_UPDATE, null ] }
-      staticAnalysisPreventMode: { enum: [ AGGRESSIVE, CAUTIOUS, DISABLED, MODERATE, UNKNOWN ] }
-      staticAnalysisPreventModeOrigin: { enum: [ AWAITING_UPDATE, null ] }
-      collectionComponents: { type: array, items: { enum: [ DPI, Metadata, File Events, Registry Events ] }}
-      sensorLastUpdate: { type: integer }
-      fullScanStatus: { enum: [ IN_PROGRESS, IDLE, UNKNOWN ] }
-      quickScanStatus: { enum: [ IN_PROGRESS, IDLE, UNKNOWN ] }
-      lastFullScheduleScanSuccessTime: { type: integer }
-      lastQuickScheduleScanSuccessTime: { type: integer }
-      policyName: { type: string }
-      deliveryTime: { type: integer }
+      location: { type: [ string, 'null' ] }
+      machineName: { type: string }
+      memoryUsage: { type: integer }
+      offlineTimeMS: { type: integer }
+      onlineTimeMS: { type: integer }
+      organization: { type: string }
+      organizationalUnit: { type: [ string, 'null' ] }
+      osType: { enum: [ LINUX, OSX, WINDOWS, UNKNOWN_OS ] }
+      osVersionType: { type: string }
+      outdated: { type: boolean }
+      pendingActions:
+        oneOf:
+          - type: 'null'
+          - type: array  # TODO
       policyId:
         oneOf:
           - { type: string, format: uuid }
           - { type: 'null' }
-      compliance: { type: [ boolean, 'null' ] }
-      groupId: { type: string, format: uuid }
-      groupName: { type: string }
-      groupStickiness: { type: boolean }
+      policyName: { type: string }
+      powerShellStatus: { enum: [ '', PS_DISABLED, PS_ENABLED ] }
+      preventionError: { enum: [ '', BLOCKI_GENERAL_ERROR, null ] }
+      preventionStatus: { enum: [ NOT_INSTALLED, DISABLED, ENABLED, UNKNOWN ] }
+      privateServerIp: { type: string, format: ipv4 }
+      proxyAddress: { type: [ string, 'null' ] }
       purgedSensors: { type: boolean }
-      sensorPurgedByUser: { type: [ string, 'null' ] }
       purgeTimestamp: { type: [ integer, 'null' ] }
-      decommissionedSensors: { type: boolean }
-      decommissionedByUser: { type: [ string, 'null' ] }
-      decommissionTimestamp: { type: [ integer, 'null' ] }
-      groupStickinessLabel: { enum: [ Dynamic, Manual ] }
+      pylumId: { type: string }
+      quickScanStatus: { enum: [ IN_PROGRESS, IDLE, UNKNOWN ] }
+      ransomwareStatus: { enum: [ DETECT_AND_SUSPEND, DETECT_ONLY, DETECT_SUSPEND_PREVENT, DISABLED, UNKNOWN ] }
+      remoteShellStatus: { enum: [ AC_DISABLED, AC_ENABLED ] }
+      sensorArchivedByUser: { type: [ string, 'null' ] }
+      sensorId: { type: string }
+      sensorLastUpdate: { type: integer }
+      sensorPurgedByUser: { type: [ string, 'null' ] }
+      serialNumber: { type: string }
+      serverId: { type: string, pattern: '^[0-9a-f]{24}$' }
+      serverIp: { type: string, format: ipv4 }
+      serverName: { type: string }
+      serviceStatus: { enum: [ Down, Up ] }
+      siteId: { type: integer }
+      siteName: { type: string }
+      staleTimeMS: { type: integer }
+      staticAnalysisDetectMode: { enum: [ AGGRESSIVE, CAUTIOUS, DISABLED, MODERATE, UNKNOWN ] }
+      staticAnalysisDetectModeOrigin: { enum: [ AWAITING_UPDATE, null ] }
+      staticAnalysisPreventMode: { enum: [ AGGRESSIVE, CAUTIOUS, DISABLED, MODERATE, UNKNOWN ] }
+      staticAnalysisPreventModeOrigin: { enum: [ AWAITING_UPDATE, null ] }
+      status: { enum: [ Archived, Stale, Online, Offline ] }
+      statusTimeMS: { type: integer }
       uniqueSensorKey: { type: string }
+      upTime: { type: integer }
+      usbStatus: { enum: [ DISABLED, ENABLED ] }
+      variantFilePreventionMode: { enum: [ '', VFP_M_DETECT, VFP_M_DISABLED, VFP_M_PREVENT, VFP_M_QUARANTINE, VFP_M_UNKNOWN, null ] }
+      version: { type: string }
+      vppMode: { enum: [ '', VPP_DETECT, VPP_DISABLED, VPP_PREVENT, null ] }
 # endregion
 
 # region GROUPS

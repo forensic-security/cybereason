@@ -9,7 +9,7 @@ MalopDetectionType: &MalopDetectionType
   enum: [ BLACKLIST, CNC, CREDENTIAL_THEFT, CUSTOM_RULE, DATA_TRANSMISSION_VOLUME, ELEVATED_ACCESS, EXTENSION_MANIPULATION, HIJACKED_PROCESS, KNOWN_MALWARE, LATERAL_MOVEMENT, MALICIOUS_PROCESS, MALICIOUS_TOOL_PROCESS, MALWARE_PROCESS, MOBILE_DEVICE, PERSISTENCE, PHISHING, PROCESS_INJECTION, PUP, RANSOMWARE, RECONNAISSANCE, UNAUTHORIZED_AUTH, UNAUTHORIZED_USER, UNKNWOWN, UNWANTED_PROCESS ]
 
 MalopDetectionEngine: &MalopDetectionEngine
-  enum: [ AntiExploit, AntiVirus, ApplicationControl, Document, EDR, RulesEngine, Script, StaticAnalysis, Mobile, Ransomware, VariantPayloadProtection ]
+  enum: [ AntiExploit, AntiVirus, ApplicationControl, Document, EDR, RulesEngine, Script, StaticAnalysis, Mobile, Ransomware, VariantFileProtection, VariantPayloadProtection ]
 
 MalopInvestigationStatus: &MalopInvestigationStatus
   enum: [ Closed, OnHold, Pending, Reopened, UnderInvestigation ]
