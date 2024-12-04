@@ -94,7 +94,7 @@ class Cybereason(
             return AsyncClient(
                 base_url=base_url,
                 headers=headers,
-                proxies=self.proxy,
+                proxy=self.proxy,
                 timeout=self.timeout,
                 http2=True,
             )

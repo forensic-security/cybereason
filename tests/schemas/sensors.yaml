@@ -143,17 +143,17 @@ policies:
               fullScan: { type: object }  # TODO (like quickScan)
               fullScanEnabled: { type: boolean }
               fullScanMode: { enum: [ SCAN, SKIP ] }
-              fullScanScheduleRange:
-                type: object
-                properties:
-                  dayOfWeekFrom: { type: integer }
-                  dayOfWeekTo: { type: integer }
-                  hourOfDayFrom: { type: integer }
-                  hourOfDayTo: { type: integer }
-                  monthlyOccurrenceFrom: { type: integer }
-                  monthlyOccurrenceTo: { type: integer }
-                  scanSchedule: { enum: [ DAILY ] }
-                  scanScheduleRangeState: { type: boolean }
+              # fullScanScheduleRange:
+              #   type: object
+              #   properties:
+              #     dayOfWeekFrom: { type: integer }
+              #     dayOfWeekTo: { type: integer }
+              #     hourOfDayFrom: { type: integer }
+              #     hourOfDayTo: { type: integer }
+              #     monthlyOccurrenceFrom: { type: integer }
+              #     monthlyOccurrenceTo: { type: integer }
+              #     scanSchedule: { enum: [ DAILY ] }
+              #     scanScheduleRangeState: { type: boolean }
               ignoreNetworkPaths: { type: boolean }
               limitFileExtensions: { type: boolean }
               localUpdateServerUrl: { const: '' }
@@ -163,17 +163,17 @@ policies:
               quickScan: { type: object }  # TODO
               quickScanEnabled: { type: boolean }
               quickScanMode: { enum: [ SCAN, SKIP ] }
-              quickScanScheduleRange:
-                type: object
-                properties:
-                  dayOfWeekFrom: { type: integer }
-                  dayOfWeekTo: { type: integer }
-                  hourOfDayFrom: { type: integer }
-                  hourOfDayTo: { type: integer }
-                  monthlyOccurrenceFrom: { type: integer }
-                  monthlyOccurrenceTo: { type: integer }
-                  scanSchedule: { enum: [ DAILY ] }
-                  scanScheduleRangeState: { type: boolean }
+              # quickScanScheduleRange:
+              #   type: object
+              #   properties:
+              #     dayOfWeekFrom: { type: integer }
+              #     dayOfWeekTo: { type: integer }
+              #     hourOfDayFrom: { type: integer }
+              #     hourOfDayTo: { type: integer }
+              #     monthlyOccurrenceFrom: { type: integer }
+              #     monthlyOccurrenceTo: { type: integer }
+              #     scanSchedule: { enum: [ DAILY ] }
+              #     scanScheduleRangeState: { type: boolean }
               scanArchives: { type: boolean }
               scanDllFiles: { type: boolean }
               shareTelemetryData: { type: boolean }
