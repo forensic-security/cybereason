@@ -382,6 +382,7 @@ class SensorsMixin(CybereasonProtocol):
         raise NotImplementedError
 # endregion
 
+    @authz('Responder L1, Responder L2, Local Responder or Local Analyst')
     async def open_remote_shell(
         self,
         pylum_id:   str,
